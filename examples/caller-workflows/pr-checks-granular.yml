@@ -1,0 +1,30 @@
+# Copy this file to .github/workflows/pr-checks.yml in your package repository.
+#
+# À-la-carte integration path: wire only the checks you want, with full
+# control over each job's inputs. Use this instead of pr-checks-aggregated.yml
+# if you need to skip a check (e.g. no audit) or customize inputs per job.
+name: PR Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+jobs:
+  detect:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/detect-platforms.yml@v1
+
+  build-test:
+    needs: detect
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/build-test.yml@v1
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+
+  lint:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/lint.yml@v1
+
+  format-check:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/format-check.yml@v1
+
+  audit:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/audit.yml@v1

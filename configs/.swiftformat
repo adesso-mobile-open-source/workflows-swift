@@ -1,0 +1,13 @@
+# Default SwiftFormat (https://github.com/nicklockwood/SwiftFormat) configuration
+# for adesso mobile open source Swift packages.
+#
+# This file is used by the `format-check.yml` reusable workflow ONLY when the
+# consuming package does not provide its own `.swiftformat` at its repository
+# root (SwiftFormat auto-discovers a package-provided `.swiftformat` and takes
+# precedence automatically - no changes needed here to override).
+#
+# Intentionally left at SwiftFormat's built-in defaults (no rule/option
+# overrides) so behavior is predictable and unsurprising. Packages that want
+# a different house style should commit their own `.swiftformat`.
+
+--exclude .build,.swiftpm

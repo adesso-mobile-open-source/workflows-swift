@@ -1,0 +1,14 @@
+# Copy this file to .github/workflows/pr-label-check.yml in your package
+# repository. Set this as a required status check in branch protection.
+#
+# One-time setup in your package repository: create three labels named
+# exactly `major`, `minor`, and `patch`.
+name: PR Label
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  label:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/pr-label-check.yml@v1

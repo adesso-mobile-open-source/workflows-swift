@@ -1,0 +1,64 @@
+name: PR Checks (aggregated)
+
+# Reusable workflow: convenience aggregator that chains the granular
+# detect-platforms / build-test / lint / format-check / audit workflows
+# together, so consumers who want the simplest possible integration can
+# call a single workflow instead of wiring each piece themselves.
+#
+# This is a thin composition layer only - all real logic lives in the
+# individual reusable workflows it calls. Consumers who want à-la-carte
+# control (e.g. skip audit, customize build-test inputs) should call the
+# granular workflows directly instead of this aggregator - see
+# examples/caller-workflows/pr-checks-granular.yml.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      scheme:
+        description: "Xcode scheme to use for xcodebuild jobs. Defaults to the package name."
+        type: string
+        required: false
+        default: ""
+      swift-version:
+        description: >
+          Swift version to install for SPM/audit jobs. Defaults to the minimum version
+          required by this repository's tooling; override to pin a newer version.
+        type: string
+        required: false
+        default: "6.2"
+
+jobs:
+  detect:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/detect-platforms.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+
+  build-test:
+    needs: detect
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/build-test.yml@v1
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+      package-path: ${{ inputs.package-path }}
+      scheme: ${{ inputs.scheme }}
+      swift-version: ${{ inputs.swift-version }}
+
+  lint:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/lint.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+
+  format-check:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/format-check.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+
+  audit:
+    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/audit.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+      swift-version: ${{ inputs.swift-version }}

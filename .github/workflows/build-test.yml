@@ -1,0 +1,146 @@
+name: Build and Test
+
+# Reusable workflow: builds and tests a Swift package across the platforms
+# supplied via the `matrix` input (produced by detect-platforms.yml).
+#
+# - platforms of kind "spm" (linux, macos) run `swift build && swift test`.
+# - platforms of kind "xcodebuild" (ios, watchos, tvos, visionos) run
+#   `xcodebuild build test` against a simulator destination on macos-latest.
+#
+# This workflow has no knowledge of how the matrix was produced - it only
+# consumes the {platform, runner, kind, sdk?} shape. This keeps it isolated
+# from detect-platforms.yml and independently testable/maintainable.
+#
+# Multi-platform fan-out example:
+#
+#   If `inputs.matrix` is (as produced by detect-platforms.yml for a
+#   package declaring `platforms: [.macOS(.v13), .iOS(.v16), .watchOS(.v9)]`):
+#     {"include":[
+#       {"platform":"macos","runner":"macos-latest","kind":"spm"},
+#       {"platform":"ios","runner":"macos-latest","kind":"xcodebuild","sdk":"iphonesimulator"},
+#       {"platform":"watchos","runner":"macos-latest","kind":"xcodebuild","sdk":"watchsimulator"}
+#     ]}
+#
+#   then this single job definition below expands into THREE independent
+#   jobs named "macos", "ios", and "watchos" that run concurrently - one
+#   per object in "include" (see the `strategy` block for why an
+#   include-only matrix behaves this way, rather than combining values).
+#
+# Why this works with GitHub Actions:
+#   - `matrix: ${{ fromJSON(inputs.matrix) }}` parses the JSON *string*
+#     input into a real matrix object at workflow-call time. Reusable
+#     workflow inputs are always strings, so `fromJSON` is required to turn
+#     it back into the structured matrix GitHub Actions expects.
+#   - `fail-fast: false` decouples the jobs from one another: without it,
+#     GitHub Actions cancels all remaining matrix jobs the moment any one
+#     of them fails, which would hide, e.g., a watchOS-only failure by
+#     killing the still-passing macOS/iOS jobs before they finish.
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: "JSON matrix (the 'matrix' output of detect-platforms.yml)."
+        type: string
+        required: true
+      package-path:
+        description: "Path to the Swift package root (containing Package.swift)."
+        type: string
+        required: false
+        default: "."
+      scheme:
+        description: "Xcode scheme to use for xcodebuild jobs. Defaults to the package name."
+        type: string
+        required: false
+        default: ""
+      swift-version:
+        description: >
+          Swift version to install for SPM jobs (Linux/macOS only). Defaults to the minimum
+          version required by this repository's tooling; override to pin a newer version.
+        type: string
+        required: false
+        default: "6.2"
+
+jobs:
+  build-test:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      # `fromJSON(inputs.matrix)` always evaluates to `{"include": [...]}`
+      # (see detect-platforms.sh). Because it contains ONLY `include` and
+      # no dimension arrays (no `os: [...]`, `version: [...]`, etc.), GitHub
+      # Actions does not compute a cartesian product - it creates exactly
+      # one job per object in the include list, using that object's keys
+      # as-is. That is why declaring 3 platforms yields 3 jobs (not 3x
+      # anything), each with its own `matrix.platform` / `matrix.runner` /
+      # `matrix.kind` / `matrix.sdk` values, referenced throughout the
+      # steps below.
+      matrix: ${{ fromJSON(inputs.matrix) }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.package-path }}
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      # The `matrix.kind == 'spm' / 'xcodebuild'` conditionals below are
+      # what let one job definition serve every platform in the matrix
+      # without per-platform job duplication. When multiple platforms of
+      # different kinds run together (e.g. macos="spm" alongside
+      # ios/watchos="xcodebuild"), each job independently evaluates these
+      # `if:` guards against its own `matrix.kind` value, so a macOS job
+      # only ever runs the "Setup Swift" / "swift build" / "swift test"
+      # steps below, and an iOS or watchOS job only ever runs the
+      # "Resolve scheme" / "Resolve simulator destination" / "xcodebuild"
+      # steps further down - the skipped steps show as "skipped", not
+      # failed.
+      - name: Setup Swift
+        if: ${{ matrix.kind == 'spm' }}
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ inputs.swift-version }}
+
+      - name: swift build
+        if: ${{ matrix.kind == 'spm' }}
+        run: swift build --verbose
+
+      - name: swift test
+        if: ${{ matrix.kind == 'spm' }}
+        run: swift test --verbose
+
+      - name: Resolve scheme
+        if: ${{ matrix.kind == 'xcodebuild' }}
+        id: scheme
+        run: |
+          if [ -n "${{ inputs.scheme }}" ]; then
+            echo "name=${{ inputs.scheme }}" >> "$GITHUB_OUTPUT"
+          else
+            NAME=$(swift package dump-package | jq -r '.name')
+            echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve simulator destination
+        if: ${{ matrix.kind == 'xcodebuild' }}
+        id: destination
+        run: |
+          case "${{ matrix.platform }}" in
+            ios)      DEST="platform=iOS Simulator,name=iPhone 15,OS=latest" ;;
+            watchos)  DEST="platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=latest" ;;
+            tvos)     DEST="platform=tvOS Simulator,name=Apple TV,OS=latest" ;;
+            visionos) DEST="platform=visionOS Simulator,name=Apple Vision Pro,OS=latest" ;;
+            *)
+              echo "::error::unsupported xcodebuild platform: ${{ matrix.platform }}" >&2
+              exit 1
+              ;;
+          esac
+          echo "value=$DEST" >> "$GITHUB_OUTPUT"
+
+      - name: xcodebuild build test
+        if: ${{ matrix.kind == 'xcodebuild' }}
+        run: |
+          set -o pipefail
+          xcodebuild build test \
+            -scheme "${{ steps.scheme.outputs.name }}" \
+            -destination "${{ steps.destination.outputs.value }}" \
+            -skipMacroValidation

@@ -1,0 +1,49 @@
+# Default SwiftLint configuration for adesso mobile open source Swift packages.
+#
+# This file is used by the `lint.yml` reusable workflow ONLY when the
+# consuming package does not provide its own `.swiftlint.yml` at its
+# repository root. To override, simply commit a `.swiftlint.yml` in the
+# package repository - it takes precedence automatically.
+#
+# NOTE: intentionally no `reporter:` override here - `lint.yml` invokes
+# SwiftLint via cirruslabs/swiftlint-action, which always runs with
+# `--reporter=json` (it parses the JSON output to emit GitHub annotations),
+# so any `reporter:` set here would be ignored/overridden anyway.
+#
+# NOTE: intentionally no `included:` here. `lint.yml` passes the package
+# path as a positional argument to scope linting to non-root packages, but
+# SwiftLint ignores CLI path arguments entirely when `included:` is set in
+# the active config - so setting it here would silently break that scoping
+# for consumers with `package-path` != ".".
+
+excluded:
+  - .build
+  - .swiftpm
+  - Package.swift
+
+# Keep the default rule set close to SwiftLint's built-in defaults, with a
+# few pragmatic adjustments for library code.
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - fatal_error_message
+  - first_where
+  - redundant_nil_coalescing
+  - sorted_first_last
+  - unused_import
+
+disabled_rules:
+  - todo
+
+line_length:
+  warning: 140
+  error: 200
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - x
+    - y
+    - z

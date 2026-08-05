@@ -1,0 +1,61 @@
+name: Format Check
+
+# Reusable workflow: verifies Swift source formatting using SwiftFormat
+# (https://github.com/nicklockwood/SwiftFormat), run in --lint mode (checks
+# formatting and fails on violations without modifying files).
+#
+# Runs on macos-latest: SwiftFormat comes preinstalled on all macOS
+# GitHub-hosted runners (per its own documentation), so no install step or
+# Swift toolchain/version pinning is required.
+#
+# Config resolution:
+#   - If the package repository has its own `.swiftformat` at its root,
+#     SwiftFormat auto-discovers and uses it automatically - no `--config`
+#     is passed in that case.
+#   - Otherwise, this workflow supplies the shared default config from
+#     configs/.swiftformat in this repository via `--config`.
+#
+# Isolated from lint/build-test/audit: this workflow only checks formatting.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+
+jobs:
+  format-check:
+    name: SwiftFormat
+    runs-on: macos-latest
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      - name: Checkout shared default config
+        uses: actions/checkout@v4
+        with:
+          repository: adesso-mobile-open-source/shared-pipelines
+          ref: v1
+          path: .shared-pipelines-config
+          sparse-checkout: |
+            configs/.swiftformat
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve config
+        id: config
+        run: |
+          if [ -f "${{ inputs.package-path }}/.swiftformat" ]; then
+            echo "args=" >> "$GITHUB_OUTPUT"
+            echo "Using package-provided .swiftformat (auto-discovered)"
+          else
+            echo "args=--config ${{ github.workspace }}/.shared-pipelines-config/configs/.swiftformat" >> "$GITHUB_OUTPUT"
+            echo "Using shared default .swiftformat"
+          fi
+
+      - name: Run SwiftFormat (lint)
+        working-directory: ${{ inputs.package-path }}
+        run: |
+          swiftformat --lint . --reporter github-actions-log ${{ steps.config.outputs.args }}

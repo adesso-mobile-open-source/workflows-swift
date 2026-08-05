@@ -1,0 +1,26 @@
+name: "Detect Platforms"
+description: >
+  Parses a Swift package's Package.swift directly (no Swift toolchain
+  required) and produces a GitHub Actions matrix JSON describing which
+  platform build/test jobs should run. Falls back to a Linux-only job when
+  no platforms are declared.
+inputs:
+  package-path:
+    description: "Path to the Swift package root (containing Package.swift)."
+    required: false
+    default: "."
+outputs:
+  matrix:
+    description: "JSON object with an 'include' matrix of {platform, runner, kind, sdk?}."
+    value: ${{ steps.detect.outputs.matrix }}
+runs:
+  using: "composite"
+  steps:
+    - name: Detect platforms
+      id: detect
+      shell: bash
+      run: |
+        chmod +x "${{ github.action_path }}/detect-platforms.sh"
+        MATRIX=$("${{ github.action_path }}/detect-platforms.sh" "${{ inputs.package-path }}")
+        echo "Resolved matrix: $MATRIX"
+        echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
