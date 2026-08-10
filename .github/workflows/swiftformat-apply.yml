@@ -1,0 +1,103 @@
+name: SwiftFormat Apply
+
+# Reusable workflow: runs SwiftFormat (https://github.com/nicklockwood/SwiftFormat)
+# in apply mode (not --lint) against the calling package and opens/updates a
+# pull request with the resulting changes, rather than failing a build.
+#
+# Why apply-and-PR instead of a blocking PR check:
+#   SwiftFormat and SwiftLint can disagree on formatting-adjacent rules (e.g.
+#   trailing commas, spacing). Running SwiftFormat in --lint mode as a
+#   required PR check risks it fighting with SwiftLint and blocking merges.
+#   Applying formatting out-of-band on a schedule (see
+#   examples/caller-workflows/swiftformat-apply.yml) and reviewing the result
+#   as a normal PR avoids that conflict entirely.
+#
+# Config resolution:
+#   - The shared config from configs/.swiftformat in this repository is
+#     ALWAYS enforced, mirroring lint.yml's enforced-config behavior. A
+#     package-level `.swiftformat` in the consuming repository has no effect
+#     and is ignored.
+#
+# Label requirement: the opened PR is targeted at `main` and must carry
+# exactly one of `major`/`minor`/`patch` to pass pr-label-check.yml and to be
+# picked up by auto-tag.yml on merge. This workflow applies the `patch` label
+# automatically - do not remove it without also disabling/adjusting
+# pr-label-check for this PR.
+#
+# NOTE: PRs opened with the default GITHUB_TOKEN do NOT trigger other
+# workflows (GitHub's recursion-prevention rule) - the required PR checks
+# (lint, build-test, etc.) will NOT run automatically on the PR this workflow
+# opens. If you need CI to run on it, pass a Personal Access Token or GitHub
+# App installation token via the `github-token` input instead of relying on
+# the default token, or manually trigger the checks (e.g. close/reopen the
+# PR, or push an empty commit) after review.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      branch:
+        description: "Branch to commit formatting changes to and open the PR from."
+        type: string
+        required: false
+        default: "chore/swiftformat-apply"
+      base:
+        description: "Branch to open the pull request against."
+        type: string
+        required: false
+        default: "main"
+      github-token:
+        description: >
+          Token used to open the pull request. Defaults to the job's
+          GITHUB_TOKEN. Pass a PAT or GitHub App installation token instead
+          if you need PR checks to run automatically on the opened PR.
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  swiftformat-apply:
+    name: SwiftFormat (apply)
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      - name: Checkout shared default config
+        uses: actions/checkout@v4
+        with:
+          repository: adesso-mobile-open-source/shared-pipelines
+          ref: v1
+          path: .shared-pipelines-config
+          sparse-checkout: |
+            configs/.swiftformat
+          sparse-checkout-cone-mode: false
+
+      - name: Run SwiftFormat (apply)
+        working-directory: ${{ inputs.package-path }}
+        run: |
+          swiftformat . --config "${{ github.workspace }}/.shared-pipelines-config/configs/.swiftformat"
+
+      - name: Open pull request with formatting changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
+          # Scoped to package-path only, so the nested .shared-pipelines-config
+          # checkout (its own separate git repo) is never picked up as a change.
+          add-paths: ${{ inputs.package-path }}
+          commit-message: "chore: apply SwiftFormat"
+          branch: ${{ inputs.branch }}
+          base: ${{ inputs.base }}
+          delete-branch: true
+          title: "chore: apply SwiftFormat"
+          body: >
+            Automated weekly SwiftFormat run against the shared default
+            config. Opened by the `swiftformat-apply.yml` reusable workflow.
+          labels: patch
