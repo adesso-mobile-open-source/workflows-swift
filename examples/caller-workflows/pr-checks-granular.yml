@@ -23,8 +23,5 @@ jobs:
   lint:
     uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/lint.yml@v1
 
-  format-check:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/format-check.yml@v1
-
   audit:
     uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/audit.yml@v1

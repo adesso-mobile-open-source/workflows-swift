@@ -1,9 +1,16 @@
 name: PR Checks (aggregated)
 
 # Reusable workflow: convenience aggregator that chains the granular
-# detect-platforms / build-test / lint / format-check / audit workflows
-# together, so consumers who want the simplest possible integration can
-# call a single workflow instead of wiring each piece themselves.
+# detect-platforms / build-test / lint / audit workflows together, so
+# consumers who want the simplest possible integration can call a single
+# workflow instead of wiring each piece themselves.
+#
+# NOTE: SwiftFormat is intentionally NOT part of PR checks. Running
+# SwiftFormat in --lint mode alongside SwiftLint on every PR risks
+# conflicting rules between the two tools blocking merges. Instead,
+# formatting is applied (not just checked) by the separate
+# swiftformat-apply.yml reusable workflow, intended to be scheduled
+# (e.g. weekly) and to open a PR with the changes rather than fail a build.
 #
 # This is a thin composition layer only - all real logic lives in the
 # individual reusable workflows it calls. Consumers who want à-la-carte
@@ -49,11 +56,6 @@ jobs:
 
   lint:
     uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/lint.yml@v1
-    with:
-      package-path: ${{ inputs.package-path }}
-
-  format-check:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/format-check.yml@v1
     with:
       package-path: ${{ inputs.package-path }}
 

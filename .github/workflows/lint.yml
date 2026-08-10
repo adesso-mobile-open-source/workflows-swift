@@ -8,10 +8,11 @@ name: Lint
 # both ubuntu-latest and macos-latest runners.
 #
 # Config resolution:
-#   - If the package repository has its own `.swiftlint.yml` at the given
-#     path (or repo root), SwiftLint picks it up automatically.
-#   - Otherwise, this workflow supplies the shared default config from
-#     configs/.swiftlint.yml in this repository.
+#   - The shared config from configs/.swiftlint.yml in this repository is
+#     ALWAYS enforced. Rules are intentionally not customizable per-package:
+#     a single, consistent lint config across all adesso mobile open source
+#     Swift packages is the point. A package-level `.swiftlint.yml` is
+#     ignored - it is never checked out or referenced by this workflow.
 #
 # Non-root packages: cirruslabs/swiftlint-action is a JavaScript action, and
 # GitHub Actions' `working-directory` only applies to `run:` steps - it has
@@ -22,7 +23,7 @@ name: Lint
 # shared default config does not set `included:` - SwiftLint ignores CLI
 # path arguments entirely when `included:` is present in the active config.
 #
-# Isolated from build-test/format-check/audit: this workflow only lints.
+# Isolated from build-test/audit: this workflow only lints.
 
 on:
   workflow_call:
@@ -56,19 +57,8 @@ jobs:
             configs/.swiftlint.yml
           sparse-checkout-cone-mode: false
 
-      - name: Resolve config
-        id: config
-        run: |
-          if [ -f "${{ inputs.package-path }}/.swiftlint.yml" ]; then
-            echo "path=${{ inputs.package-path }}/.swiftlint.yml" >> "$GITHUB_OUTPUT"
-            echo "Using package-provided .swiftlint.yml"
-          else
-            echo "path=.shared-pipelines-config/configs/.swiftlint.yml" >> "$GITHUB_OUTPUT"
-            echo "Using shared default .swiftlint.yml"
-          fi
-
       - name: Run SwiftLint
         uses: cirruslabs/swiftlint-action@v1
         with:
           version: ${{ inputs.swiftlint-version }}
-          args: "--strict --config ${{ steps.config.outputs.path }} ${{ inputs.package-path }}"
+          args: "--strict --config .shared-pipelines-config/configs/.swiftlint.yml ${{ inputs.package-path }}"

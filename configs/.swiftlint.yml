@@ -1,9 +1,9 @@
-# Default SwiftLint configuration for adesso mobile open source Swift packages.
+# Enforced SwiftLint configuration for adesso mobile open source Swift packages.
 #
-# This file is used by the `lint.yml` reusable workflow ONLY when the
-# consuming package does not provide its own `.swiftlint.yml` at its
-# repository root. To override, simply commit a `.swiftlint.yml` in the
-# package repository - it takes precedence automatically.
+# This file is ALWAYS used by the `lint.yml` reusable workflow. Rules are
+# intentionally not customizable per-package - a single, consistent lint
+# config across all consuming packages is the point. A package-level
+# `.swiftlint.yml` in a consuming repository has no effect and is ignored.
 #
 # NOTE: intentionally no `reporter:` override here - `lint.yml` invokes
 # SwiftLint via cirruslabs/swiftlint-action, which always runs with

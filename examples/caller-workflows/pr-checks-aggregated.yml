@@ -1,7 +1,8 @@
 # Copy this file to .github/workflows/pr-checks.yml in your package repository.
 #
 # Easiest integration path: a single job that runs platform detection,
-# build/test, lint, format-check, and dependency audit.
+# build/test, lint, and dependency audit. See swiftformat-apply.yml for the
+# separate, scheduled SwiftFormat job (not part of PR checks).
 name: PR Checks
 
 on:
