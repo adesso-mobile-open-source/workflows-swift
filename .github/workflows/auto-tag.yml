@@ -1,8 +1,8 @@
 name: Auto Tag
 
 # Reusable workflow: on merge of a pull request into main, computes the
-# next semver tag based on which of the "major"/"minor"/"patch" labels was
-# applied to the merged PR, then pushes that tag. Tag only - no GitHub
+# next semver tag based on which of the "bump:major"/"bump:minor"/"bump:patch"
+# labels was applied to the merged PR, then pushes that tag. Tag only - no GitHub
 # Release is created (kept minimal by design; can be extended later).
 #
 # NOTE: tags pushed using the default GITHUB_TOKEN do NOT trigger further
@@ -42,15 +42,15 @@ jobs:
           LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
           for level in major minor patch; do
-            if echo "$LABELS_JSON" | jq -e --arg l "$level" 'any(.[]; . == $l)' >/dev/null; then
+            if echo "$LABELS_JSON" | jq -e --arg l "bump:$level" 'any(.[]; . == $l)' >/dev/null; then
               echo "level=$level" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
-          echo "::error::merged PR has no major/minor/patch label - cannot determine bump level" >&2
+          echo "::error::merged PR has no bump:major/bump:minor/bump:patch label - cannot determine bump level" >&2
           exit 1
 
       - name: Bump and push tag
-        uses: adesso-mobile-open-source/shared-pipelines/actions/bump-tag@v1
+        uses: adesso-mobile-open-source/workflows-swift/actions/bump-tag@v1
         with:
           bump-level: ${{ steps.bump-level.outputs.level }}

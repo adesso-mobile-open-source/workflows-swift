@@ -3,17 +3,17 @@
 # validate-label.sh
 #
 # Validates that a pull request has EXACTLY ONE of the semver labels
-# `major`, `minor`, or `patch` applied. Used to gate merges so that every
-# PR unambiguously declares its version bump.
+# `bump:major`, `bump:minor`, or `bump:patch` applied. Used to gate merges
+# so that every PR unambiguously declares its version bump.
 #
 # Usage:
 #   validate-label.sh <labels-json>
 #
 # <labels-json> is a JSON array of label name strings, e.g.:
-#   '["major"]'                 -> valid (exit 0)
-#   '["bug", "patch"]'          -> valid (exit 0)
-#   '[]'                        -> invalid: no semver label (exit 1)
-#   '["major", "minor"]'        -> invalid: more than one semver label (exit 1)
+#   '["bump:major"]'                    -> valid (exit 0)
+#   '["bug", "bump:patch"]'             -> valid (exit 0)
+#   '[]'                                -> invalid: no semver label (exit 1)
+#   '["bump:major", "bump:minor"]'      -> invalid: more than one semver label (exit 1)
 #
 # In a GitHub Actions workflow this is typically invoked as:
 #   validate-label.sh "$(jq -c '.' <<< "$LABELS_JSON")"
@@ -34,7 +34,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-SEMVER_LABELS=(major minor patch)
+SEMVER_LABELS=("bump:major" "bump:minor" "bump:patch")
 
 MATCHED=()
 for label in "${SEMVER_LABELS[@]}"; do
@@ -46,10 +46,10 @@ done
 COUNT="${#MATCHED[@]}"
 
 if [ "$COUNT" -eq 0 ]; then
-  echo "::error::pull request must have exactly one of the labels: major, minor, patch (found none)" >&2
+  echo "::error::pull request must have exactly one of the labels: bump:major, bump:minor, bump:patch (found none)" >&2
   exit 1
 elif [ "$COUNT" -gt 1 ]; then
-  echo "::error::pull request must have exactly one of the labels: major, minor, patch (found: ${MATCHED[*]})" >&2
+  echo "::error::pull request must have exactly one of the labels: bump:major, bump:minor, bump:patch (found: ${MATCHED[*]})" >&2
   exit 1
 fi
 

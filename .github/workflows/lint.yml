@@ -50,9 +50,9 @@ jobs:
       - name: Checkout shared default config
         uses: actions/checkout@v4
         with:
-          repository: adesso-mobile-open-source/shared-pipelines
+          repository: adesso-mobile-open-source/workflows-swift
           ref: v1
-          path: .shared-pipelines-config
+          path: .workflows-swift-config
           sparse-checkout: |
             configs/.swiftlint.yml
           sparse-checkout-cone-mode: false
@@ -61,4 +61,4 @@ jobs:
         uses: cirruslabs/swiftlint-action@v1
         with:
           version: ${{ inputs.swiftlint-version }}
-          args: "--strict --config .shared-pipelines-config/configs/.swiftlint.yml ${{ inputs.package-path }}"
+          args: "--strict --config .workflows-swift-config/configs/.swiftlint.yml ${{ inputs.package-path }}"

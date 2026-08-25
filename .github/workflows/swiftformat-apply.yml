@@ -19,10 +19,10 @@ name: SwiftFormat Apply
 #     and is ignored.
 #
 # Label requirement: the opened PR is targeted at `main` and must carry
-# exactly one of `major`/`minor`/`patch` to pass pr-label-check.yml and to be
-# picked up by auto-tag.yml on merge. This workflow applies the `patch` label
-# automatically - do not remove it without also disabling/adjusting
-# pr-label-check for this PR.
+# exactly one of `bump:major`/`bump:minor`/`bump:patch` to pass pr-label-check.yml
+# and to be picked up by auto-tag.yml on merge. This workflow applies the
+# `bump:patch` label automatically - do not remove it without also
+# disabling/adjusting pr-label-check for this PR.
 #
 # NOTE: PRs opened with the default GITHUB_TOKEN do NOT trigger other
 # workflows (GitHub's recursion-prevention rule) - the required PR checks
@@ -73,9 +73,9 @@ jobs:
       - name: Checkout shared default config
         uses: actions/checkout@v4
         with:
-          repository: adesso-mobile-open-source/shared-pipelines
+          repository: adesso-mobile-open-source/workflows-swift
           ref: v1
-          path: .shared-pipelines-config
+          path: .workflows-swift-config
           sparse-checkout: |
             configs/.swiftformat
           sparse-checkout-cone-mode: false
@@ -83,13 +83,13 @@ jobs:
       - name: Run SwiftFormat (apply)
         working-directory: ${{ inputs.package-path }}
         run: |
-          swiftformat . --config "${{ github.workspace }}/.shared-pipelines-config/configs/.swiftformat"
+          swiftformat . --config "${{ github.workspace }}/.workflows-swift-config/configs/.swiftformat"
 
       - name: Open pull request with formatting changes
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
-          # Scoped to package-path only, so the nested .shared-pipelines-config
+          # Scoped to package-path only, so the nested .workflows-swift-config
           # checkout (its own separate git repo) is never picked up as a change.
           add-paths: ${{ inputs.package-path }}
           commit-message: "chore: apply SwiftFormat"
@@ -100,4 +100,4 @@ jobs:
           body: >
             Automated weekly SwiftFormat run against the shared default
             config. Opened by the `swiftformat-apply.yml` reusable workflow.
-          labels: patch
+          labels: "bump:patch"

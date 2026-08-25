@@ -1,9 +1,10 @@
 name: PR Checks (aggregated)
 
 # Reusable workflow: convenience aggregator that chains the granular
-# detect-platforms / build-test / lint / audit workflows together, so
-# consumers who want the simplest possible integration can call a single
-# workflow instead of wiring each piece themselves.
+# detect-platforms / build-test / lint / audit / copyright-header-check
+# workflows together, so consumers who want the simplest possible
+# integration can call a single workflow instead of wiring each piece
+# themselves.
 #
 # NOTE: SwiftFormat is intentionally NOT part of PR checks. Running
 # SwiftFormat in --lint mode alongside SwiftLint on every PR risks
@@ -41,13 +42,13 @@ on:
 
 jobs:
   detect:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/detect-platforms.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1
     with:
       package-path: ${{ inputs.package-path }}
 
   build-test:
     needs: detect
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/build-test.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1
     with:
       matrix: ${{ needs.detect.outputs.matrix }}
       package-path: ${{ inputs.package-path }}
@@ -55,12 +56,17 @@ jobs:
       swift-version: ${{ inputs.swift-version }}
 
   lint:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/lint.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1
     with:
       package-path: ${{ inputs.package-path }}
 
   audit:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/audit.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1
     with:
       package-path: ${{ inputs.package-path }}
       swift-version: ${{ inputs.swift-version }}
+
+  copyright-header:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}

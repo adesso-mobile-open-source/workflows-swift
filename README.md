@@ -1,4 +1,4 @@
-# shared-pipelines
+# workflows-swift
 
 The Repository for Shared Pipelines used for the adesso mobile open source projects.
 
@@ -16,11 +16,12 @@ invoked via `workflow_call`). Shared logic that isn't pure YAML lives in composi
 | `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. Falls back to Linux-only when no platforms are declared. | `ubuntu-latest` |
 | `build-test.yml` | Builds and tests each matrix entry: `swift build && swift test` for `linux`/`macos`, `xcodebuild build test` against a simulator for `ios`/`watchos`/`tvos`/`visionos`. | `ubuntu-latest` / `macos-latest` |
 | `lint.yml` | Runs SwiftLint via [`cirruslabs/swiftlint-action`](https://github.com/cirruslabs/swiftlint-action), which downloads a self-contained `swiftlint` binary directly (no Docker/Swift toolchain needed). Always enforces the [shared config](configs/.swiftlint.yml) — not overridable per-package. | `ubuntu-latest` |
-| `swiftformat-apply.yml` | Runs [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) in apply mode against the [shared config](configs/.swiftformat) and opens a `patch`-labeled pull request to `main` with the changes. Intended to be scheduled (e.g. weekly), not run on every PR. | `macos-latest` |
+| `swiftformat-apply.yml` | Runs [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) in apply mode against the [shared config](configs/.swiftformat) and opens a `bump:patch`-labeled pull request to `main` with the changes. Intended to be scheduled (e.g. weekly), not run on every PR. | `macos-latest` |
 | `audit.yml` | Resolves dependencies, prints the dependency graph, and runs GitHub's dependency review action on PRs. | `ubuntu-latest` |
-| `pr-label-check.yml` | Fails unless the pull request has **exactly one** of the labels `major`, `minor`, `patch`. | `ubuntu-latest` |
+| `copyright-header-check.yml` | Fails unless every `*.swift` file carries the required Apache 2.0 copyright header (`Copyright <YEAR> adesso SE` + license notice) near the top of the file. | `ubuntu-latest` |
+| `pr-label-check.yml` | Fails unless the pull request has **exactly one** of the labels `bump:major`, `bump:minor`, `bump:patch`. | `ubuntu-latest` |
 | `auto-tag.yml` | On merge of a labeled PR into `main`, computes and pushes the next semver tag based on the label. Tag only — no GitHub Release. | `ubuntu-latest` |
-| `pr-checks.yml` | Aggregator that chains `detect-platforms` → `build-test` + `lint` + `audit` for single-line integration. | mixed |
+| `pr-checks.yml` | Aggregator that chains `detect-platforms` → `build-test` + `lint` + `audit` + `copyright-header-check` for single-line integration. | mixed |
 
 Composite actions (`actions/*`) hold the actual scripts and are consumed by the reusable workflows above; you
 generally won't reference them directly unless building a custom workflow.
@@ -49,7 +50,7 @@ on:
   pull_request: {}
 jobs:
   checks:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/pr-checks.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1
     secrets: inherit
 ```
 
@@ -66,7 +67,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 jobs:
   label:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/pr-label-check.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1
 ```
 
 ### 3. Auto-tag on merge to main
@@ -81,7 +82,7 @@ on:
 jobs:
   tag:
     permissions: { contents: write }
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/auto-tag.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1
     secrets: inherit
 ```
 
@@ -97,23 +98,23 @@ on:
 jobs:
   swiftformat-apply:
     permissions: { contents: write, pull-requests: write }
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/swiftformat-apply.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1
 ```
 
-This opens a `patch`-labeled pull request against `main` with any formatting changes — see
+This opens a `bump:patch`-labeled pull request against `main` with any formatting changes — see
 [`examples/caller-workflows/swiftformat-apply.yml`](examples/caller-workflows/swiftformat-apply.yml) and the
 [Configuration overrides](#configuration-overrides) section below for why this runs on a schedule instead of
 as a PR check.
 
 ## One-time setup per package repository
 
-1. **Create three labels**: `major`, `minor`, `patch`.
+1. **Create three labels**: `bump:major`, `bump:minor`, `bump:patch`.
 2. **Branch protection on `main`:**
    - Require the `PR Label` check (and the `PR Checks` check) to pass before merging.
    - Disallow direct pushes to `main` (all changes must go through a labeled PR) — this is what makes
      auto-tagging reliable, since it relies on the merged PR's label.
-3. Every PR must carry exactly one of `major`/`minor`/`patch` before it can merge. On merge, the tag is bumped
-   and pushed automatically.
+3. Every PR must carry exactly one of `bump:major`/`bump:minor`/`bump:patch` before it can merge. On merge,
+   the tag is bumped and pushed automatically.
 
 ## Configuration overrides
 
@@ -179,7 +180,7 @@ migrating to custom/self-hosted runners later only requires changing those value
   `swiftformat-apply.yml` uses the default `GITHUB_TOKEN` unless a `github-token` override is supplied, so
   `PR Checks`/`PR Label` won't run on it automatically — review and merge manually, or supply a PAT/App token.
 - **`uses:` cannot contain expressions.** Composite action references inside the reusable workflows (e.g.
-  `adesso-mobile-open-source/shared-pipelines/actions/detect-platforms@v1`) are pinned to a static ref by necessity — this
+  `adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1`) are pinned to a static ref by necessity — this
   is a hard GitHub Actions restriction, not an oversight. Bump these refs in lockstep with this repository's
   version tags.
 

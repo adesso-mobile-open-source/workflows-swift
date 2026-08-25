@@ -1,12 +1,12 @@
 name: "Validate Semver Label"
 description: >
-  Fails unless exactly one of the labels "major", "minor", or "patch" is
-  present on the given list of labels. Intended for gating pull requests so
-  that every merge unambiguously declares its version bump.
+  Fails unless exactly one of the labels "bump:major", "bump:minor", or
+  "bump:patch" is present on the given list of labels. Intended for gating
+  pull requests so that every merge unambiguously declares its version bump.
 inputs:
   labels-json:
     description: >
-      JSON array of label name strings, e.g. '["major"]'. Typically
+      JSON array of label name strings, e.g. '["bump:major"]'. Typically
       supplied as toJSON(github.event.pull_request.labels.*.name).
     required: true
 runs:

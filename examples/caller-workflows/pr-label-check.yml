@@ -2,7 +2,7 @@
 # repository. Set this as a required status check in branch protection.
 #
 # One-time setup in your package repository: create three labels named
-# exactly `major`, `minor`, and `patch`.
+# exactly `bump:major`, `bump:minor`, and `bump:patch`.
 name: PR Label
 
 on:
@@ -11,4 +11,4 @@ on:
 
 jobs:
   label:
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/pr-label-check.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1

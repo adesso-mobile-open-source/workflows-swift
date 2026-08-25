@@ -1,7 +1,7 @@
 # Copy this file to .github/workflows/auto-tag.yml in your package repository.
 #
 # On merge of a pull request into main, pushes the next semver tag based on
-# whichever of the major/minor/patch labels was applied to the merged PR.
+# whichever of the bump:major/bump:minor/bump:patch labels was applied to the merged PR.
 # Requires branch protection to enforce "no direct pushes to main" so every
 # change to main goes through a labeled pull request.
 name: Auto Tag
@@ -15,5 +15,5 @@ jobs:
   tag:
     permissions:
       contents: write
-    uses: adesso-mobile-open-source/shared-pipelines/.github/workflows/auto-tag.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1
     secrets: inherit
