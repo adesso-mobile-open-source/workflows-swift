@@ -1,0 +1,76 @@
+name: Copyright Header Check
+
+# Reusable workflow: fails if any *.swift file in the calling package does
+# not carry the required Apache 2.0 copyright header near the top of the
+# file:
+#
+#   Copyright [YEAR] adesso SE
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# `[YEAR]` matches any 4-digit year. The header is looked for within the
+# leading comment block of each file (first N lines), tolerant of both
+# `//` line-comment and `/* ... */` block-comment styles, so it does not
+# require byte-exact placement at line 1.
+#
+# Isolated from lint/build-test/audit: this workflow only checks headers.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      header-scan-lines:
+        description: "Number of leading lines per file to search for the header."
+        type: string
+        required: false
+        default: "20"
+
+jobs:
+  copyright-header:
+    name: Copyright header
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      - name: Check copyright header on all Swift files
+        working-directory: ${{ inputs.package-path }}
+        env:
+          HEADER_SCAN_LINES: ${{ inputs.header-scan-lines }}
+        run: |
+          set -euo pipefail
+
+          # (?s) makes `.` match newlines so the pattern can span the
+          # multiple lines of the header. Comment markers (`//`, `/*`,
+          # `*`, `*/`) are stripped from each scanned line first so the
+          # same pattern matches both comment styles.
+          HEADER_PATTERN='(?s)Copyright\s+[0-9]{4}\s+adesso SE.*?Licensed under the Apache License, Version 2\.0 \(the "License"\);.*?you may not use this file except in compliance with the License\..*?You may obtain a copy of the License at.*?http://www\.apache\.org/licenses/LICENSE-2\.0'
+
+          FAILED=()
+          while IFS= read -r -d '' file; do
+            cleaned=$(head -n "$HEADER_SCAN_LINES" "$file" | sed -E 's#^[[:space:]]*(//|/\*+|\*/|\*)[[:space:]]?##')
+            if ! printf '%s' "$cleaned" | grep -Pzoq "$HEADER_PATTERN"; then
+              FAILED+=("$file")
+            fi
+          done < <(find . -type f -name '*.swift' \
+            -not -path '*/.build/*' \
+            -not -path '*/.git/*' \
+            -not -path '*/Pods/*' \
+            -not -path '*/DerivedData/*' \
+            -print0)
+
+          if [ "${#FAILED[@]}" -gt 0 ]; then
+            echo "::error::${#FAILED[@]} Swift file(s) are missing the required copyright header"
+            for f in "${FAILED[@]}"; do
+              echo "::error file=$f::missing or invalid copyright header (expected 'Copyright <YEAR> adesso SE' + Apache 2.0 notice near the top of the file)"
+            done
+            exit 1
+          fi
+
+          echo "OK: copyright header present in all Swift files"
