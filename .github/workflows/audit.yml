@@ -49,4 +49,5 @@ jobs:
       - name: GitHub dependency review (PRs only)
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/dependency-review-action@v5
-        continue-on-error: true
+        with:
+          config-file: './.github/dependency-review-config.yml'
