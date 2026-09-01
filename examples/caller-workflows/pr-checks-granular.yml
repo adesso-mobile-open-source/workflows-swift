@@ -1,4 +1,6 @@
-# Copy this file to .github/workflows/pr-checks.yml in your package repository.
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
 #
 # À-la-carte integration path: wire only the checks you want, with full
 # control over each job's inputs. Use this instead of pr-checks-aggregated.yml

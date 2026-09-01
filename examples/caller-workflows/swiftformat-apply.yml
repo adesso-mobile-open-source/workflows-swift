@@ -1,4 +1,6 @@
-# Copy this file to .github/workflows/swiftformat-apply.yml in your package repository.
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
 #
 # Runs SwiftFormat weekly against the shared default config and opens a pull
 # request (labeled `bump:patch`, targeting `main`) with any formatting changes,

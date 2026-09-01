@@ -1,4 +1,6 @@
-# Copy this file to .github/workflows/auto-tag.yml in your package repository.
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
 #
 # On merge of a pull request into main, pushes the next semver tag based on
 # whichever of the bump:major/bump:minor/bump:patch labels was applied to the merged PR.

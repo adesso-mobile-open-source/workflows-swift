@@ -29,14 +29,13 @@ generally won't reference them directly unless building a custom workflow.
 ## Integrating a package (minimal footprint)
 
 > **TODO:** the intended integration path is a dedicated **template repository** that new packages are
-> created from (with the caller workflows already wired up), rather than copy-pasting files from this repo.
-> That template repository does not exist yet. Until it does, the steps below (copying from
-> [`examples/caller-workflows/`](examples/caller-workflows)) are a stopgap, not the long-term recommended
-> approach.
+> created from, with the caller workflows below already wired up — no manual copying required. That template
+> repository does not exist yet.
 
-Copy the templates from [`examples/caller-workflows/`](examples/caller-workflows) into the consuming
-repository's `.github/workflows/`. Four caller files are needed because they respond to four different
-GitHub events (PR checks, label validation, post-merge tagging, scheduled formatting).
+**Interim stopgap:** until the template repository exists, manually copy the example caller workflows from
+[`examples/caller-workflows/`](examples/caller-workflows) into the consuming repository's
+`.github/workflows/`. Four caller files are needed because they respond to four different GitHub events (PR
+checks, label validation, post-merge tagging, scheduled formatting).
 
 ### 1. PR checks — pick one
 

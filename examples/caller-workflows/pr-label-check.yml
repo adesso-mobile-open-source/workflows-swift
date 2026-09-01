@@ -1,5 +1,8 @@
-# Copy this file to .github/workflows/pr-label-check.yml in your package
-# repository. Set this as a required status check in branch protection.
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# Intended to be set as a required status check in branch protection.
 #
 # One-time setup in your package repository: create three labels named
 # exactly `bump:major`, `bump:minor`, and `bump:patch`.

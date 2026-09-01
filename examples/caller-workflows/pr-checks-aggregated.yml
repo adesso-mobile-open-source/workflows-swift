@@ -1,4 +1,6 @@
-# Copy this file to .github/workflows/pr-checks.yml in your package repository.
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
 #
 # Easiest integration path: a single job that runs platform detection,
 # build/test, lint, and dependency audit. See swiftformat-apply.yml for the
