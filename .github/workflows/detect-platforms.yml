@@ -37,6 +37,6 @@ jobs:
       # bumped in lockstep whenever this workflow's own version tag moves.
       - name: Detect platforms
         id: detect
-        uses: adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1
+        uses: adesso-mobile-open-source/workflows-swift/actions/detect-platforms@feature/versioning
         with:
           package-path: ${{ inputs.package-path }}
