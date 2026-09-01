@@ -50,4 +50,4 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/dependency-review-action@v5
         with:
-          config-file: 'adesso-mobile-open-source/shared-pipelines/.github/dependency-review-config.yml@v1'
+          config-file: 'adesso-mobile-open-source/shared-pipelines/.github/dependency-review-config.yml@feature/versioning'
