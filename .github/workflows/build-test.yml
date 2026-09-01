@@ -82,7 +82,7 @@ jobs:
         working-directory: ${{ inputs.package-path }}
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The `matrix.kind == 'spm' / 'xcodebuild'` conditionals below are
       # what let one job definition serve every platform in the matrix
@@ -103,11 +103,11 @@ jobs:
 
       - name: swift build
         if: ${{ matrix.kind == 'spm' }}
-        run: swift build --verbose
+        run: swift build
 
       - name: swift test
         if: ${{ matrix.kind == 'spm' }}
-        run: swift test --verbose
+        run: swift test
 
       - name: Resolve scheme
         if: ${{ matrix.kind == 'xcodebuild' }}
@@ -181,8 +181,19 @@ jobs:
       - name: xcodebuild build test
         if: ${{ matrix.kind == 'xcodebuild' }}
         run: |
+          # Pipe xcodebuild through xcbeautify to collapse the very verbose
+          # raw build log into concise lines while still surfacing compiler
+          # warnings/errors and per-test pass/fail. xcbeautify is preinstalled
+          # on GitHub macOS runners, so no install step is needed. The
+          # `github-actions` renderer emits inline GitHub annotations for
+          # warnings/errors.
+          #
+          # `set -o pipefail` is REQUIRED here: without it the pipeline's exit
+          # status would be xcbeautify's (which succeeds), masking a failing
+          # xcodebuild. With pipefail a build/test failure still fails the job.
           set -o pipefail
           xcodebuild build test \
             -scheme "${{ steps.scheme.outputs.name }}" \
             -destination "${{ steps.destination.outputs.value }}" \
-            -skipMacroValidation
+            -skipMacroValidation \
+            | xcbeautify --renderer github-actions

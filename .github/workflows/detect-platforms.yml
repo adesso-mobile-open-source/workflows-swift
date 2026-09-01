@@ -30,7 +30,7 @@ jobs:
       matrix: ${{ steps.detect.outputs.matrix }}
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # NOTE: `uses:` cannot reference expressions/contexts (GitHub Actions
       # restriction), so the ref here is pinned as a static literal. It is
