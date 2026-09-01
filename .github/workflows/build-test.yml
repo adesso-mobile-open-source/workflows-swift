@@ -124,23 +124,59 @@ jobs:
         if: ${{ matrix.kind == 'xcodebuild' }}
         id: destination
         run: |
-          # Use the generic "Any <platform> Simulator Device" destinations
-          # rather than pinning a specific device name/OS. Concrete device
-          # names (e.g. "iPhone 15") and "OS=latest" break whenever the Xcode
-          # runner image bumps its bundled simulators, whereas these generic
-          # placeholders always exist and let xcodebuild pick whatever
-          # concrete simulator is installed.
+          set -euo pipefail
+
+          # Resolve a CONCRETE simulator UDID at runtime rather than pinning a
+          # device name or using the generic "Any <platform> Simulator Device"
+          # placeholder.
+          #
+          # Why not "Any ... Simulator Device": that entry is a *placeholder*
+          # (its id is `dvtdevice-...placeholder`). xcodebuild accepts it for a
+          # plain `build`, but `build test` needs a real, bootable simulator,
+          # and xcodebuild additionally appends `OS:latest` to the specifier -
+          # which no placeholder satisfies - so it fails with "Unable to find a
+          # device matching the provided destination specifier".
+          #
+          # Why not a hardcoded name (e.g. "iPhone 15"): the devices bundled
+          # with the Xcode runner image change on every image bump, so any
+          # fixed name eventually disappears and breaks the pipeline.
+          #
+          # Instead: ask `xcrun simctl` for the available devices of the target
+          # runtime and pick the newest concrete one by UDID. A UDID is an
+          # unambiguous destination that never needs an OS= qualifier.
           case "${{ matrix.platform }}" in
-            ios)      DEST="platform=iOS Simulator,name=Any iOS Simulator Device" ;;
-            watchos)  DEST="platform=watchOS Simulator,name=Any watchOS Simulator Device" ;;
-            tvos)     DEST="platform=tvOS Simulator,name=Any tvOS Simulator Device" ;;
-            visionos) DEST="platform=visionOS Simulator,name=Any visionOS Simulator Device" ;;
+            ios)      PLATFORM_NAME="iOS Simulator";      RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.iOS" ;;
+            watchos)  PLATFORM_NAME="watchOS Simulator";  RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.watchOS" ;;
+            tvos)     PLATFORM_NAME="tvOS Simulator";     RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.tvOS" ;;
+            visionos) PLATFORM_NAME="visionOS Simulator"; RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.xrOS" ;;
             *)
               echo "::error::unsupported xcodebuild platform: ${{ matrix.platform }}" >&2
               exit 1
               ;;
           esac
-          echo "value=$DEST" >> "$GITHUB_OUTPUT"
+
+          # Select, among all AVAILABLE devices whose runtime matches the
+          # target platform, the one on the newest runtime (runtime identifiers
+          # sort ascending by version, so `last` is newest). Emit its UDID.
+          UDID=$(xcrun simctl list devices available --json \
+            | jq -r --arg rt "$RUNTIME_RE" '
+                [ .devices
+                  | to_entries[]
+                  | select(.key | test($rt))
+                  | .value[]
+                  | select(.isAvailable == true)
+                  | .udid
+                ] | last // empty')
+
+          if [ -z "$UDID" ]; then
+            echo "::error::no available '$PLATFORM_NAME' simulator found on this runner" >&2
+            echo "Available simulators on this runner:" >&2
+            xcrun simctl list devices available >&2 || true
+            exit 1
+          fi
+
+          echo "Selected $PLATFORM_NAME simulator UDID: $UDID"
+          echo "value=platform=$PLATFORM_NAME,id=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: xcodebuild build test
         if: ${{ matrix.kind == 'xcodebuild' }}
