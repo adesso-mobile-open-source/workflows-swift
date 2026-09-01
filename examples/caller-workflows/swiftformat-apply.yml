@@ -1,0 +1,35 @@
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# Runs SwiftFormat weekly against the shared default config and opens a pull
+# request (labeled `bump:patch`, targeting `main`) with any formatting changes,
+# instead of blocking PRs with a --lint check. See swiftformat-apply.yml's
+# own header comment for why this is a scheduled apply-and-PR job rather
+# than a PR check.
+#
+# NOTE: the opened PR uses the default GITHUB_TOKEN, so it will NOT
+# automatically trigger your PR Checks/PR Label workflows (GitHub's
+# recursion-prevention rule for GITHUB_TOKEN-authored PRs). Review and merge
+# it manually, or supply a PAT/GitHub App token via the `github-token` input
+# if you need CI to run on it automatically.
+name: SwiftFormat Apply
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC. Adjust to your preference.
+    - cron: "0 6 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  swiftformat-apply:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1
+    # Optional inputs (all have sensible defaults):
+    # with:
+    #   package-path: "."
+    #   branch: "chore/swiftformat-apply"
+    #   base: "main"
+    #   github-token: ${{ secrets.SWIFTFORMAT_PAT }}

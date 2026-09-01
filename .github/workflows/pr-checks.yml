@@ -1,0 +1,72 @@
+name: PR Checks (aggregated)
+
+# Reusable workflow: convenience aggregator that chains the granular
+# detect-platforms / build-test / lint / audit / copyright-header-check
+# workflows together, so consumers who want the simplest possible
+# integration can call a single workflow instead of wiring each piece
+# themselves.
+#
+# NOTE: SwiftFormat is intentionally NOT part of PR checks. Running
+# SwiftFormat in --lint mode alongside SwiftLint on every PR risks
+# conflicting rules between the two tools blocking merges. Instead,
+# formatting is applied (not just checked) by the separate
+# swiftformat-apply.yml reusable workflow, intended to be scheduled
+# (e.g. weekly) and to open a PR with the changes rather than fail a build.
+#
+# This is a thin composition layer only - all real logic lives in the
+# individual reusable workflows it calls. Consumers who want à-la-carte
+# control (e.g. skip audit, customize build-test inputs) should call the
+# granular workflows directly instead of this aggregator - see
+# examples/caller-workflows/pr-checks-granular.yml.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      scheme:
+        description: "Xcode scheme to use for xcodebuild jobs. Defaults to the package name."
+        type: string
+        required: false
+        default: ""
+      swift-version:
+        description: >
+          Swift version to install for SPM/audit jobs. Defaults to the minimum version
+          required by this repository's tooling; override to pin a newer version.
+        type: string
+        required: false
+        default: "6.2"
+
+jobs:
+  detect:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+
+  build-test:
+    needs: detect
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+      package-path: ${{ inputs.package-path }}
+      scheme: ${{ inputs.scheme }}
+      swift-version: ${{ inputs.swift-version }}
+
+  lint:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+
+  audit:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}
+      swift-version: ${{ inputs.swift-version }}
+
+  copyright-header:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1
+    with:
+      package-path: ${{ inputs.package-path }}

@@ -1,0 +1,17 @@
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# Intended to be set as a required status check in branch protection.
+#
+# One-time setup in your package repository: create three labels named
+# exactly `bump:major`, `bump:minor`, and `bump:patch`.
+name: PR Label
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  label:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1

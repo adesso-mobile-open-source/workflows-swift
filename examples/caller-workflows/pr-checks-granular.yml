@@ -1,0 +1,32 @@
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# À-la-carte integration path: wire only the checks you want, with full
+# control over each job's inputs. Use this instead of pr-checks-aggregated.yml
+# if you need to skip a check (e.g. no audit) or customize inputs per job.
+name: PR Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+jobs:
+  detect:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1
+
+  build-test:
+    needs: detect
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1
+    with:
+      matrix: ${{ needs.detect.outputs.matrix }}
+
+  lint:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1
+
+  audit:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1
+
+  copyright-header:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1

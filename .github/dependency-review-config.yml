@@ -1,0 +1,19 @@
+# Configuration for actions/dependency-review-action
+# Only common permissive (non-copyleft) open source licenses are allowed.
+# SPDX identifiers: https://spdx.org/licenses/
+allow-licenses:
+  - '0BSD'
+  - 'Apache-1.1'
+  - 'Apache-2.0'
+  - 'BSD-2-Clause'
+  - 'BSD-3-Clause'
+  - 'BSD-3-Clause-Clear'
+  - 'BSL-1.0'
+  - 'CC0-1.0'
+  - 'ISC'
+  - 'MIT'
+  - 'MPL-2.0'
+  - 'PostgreSQL'
+  - 'Python-2.0'
+  - 'Unlicense'
+  - 'Zlib'

@@ -1,0 +1,21 @@
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# On merge of a pull request into main, pushes the next semver tag based on
+# whichever of the bump:major/bump:minor/bump:patch labels was applied to the merged PR.
+# Requires branch protection to enforce "no direct pushes to main" so every
+# change to main goes through a labeled pull request.
+name: Auto Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  tag:
+    permissions:
+      contents: write
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1
+    secrets: inherit

@@ -1,0 +1,23 @@
+# Example caller workflow. New packages are intended to be created from a
+# dedicated template repository that wires this up automatically (see the
+# repo README) — no manual copying once that exists.
+#
+# Easiest integration path: a single job that runs platform detection,
+# build/test, lint, and dependency audit. See swiftformat-apply.yml for the
+# separate, scheduled SwiftFormat job (not part of PR checks).
+name: PR Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+jobs:
+  checks:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1
+    secrets: inherit
+    # Optional inputs (all have sensible defaults):
+    # with:
+    #   package-path: "."
+    #   scheme: "MyLibrary"
+    #   swift-version: "6.2"

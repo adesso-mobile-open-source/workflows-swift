@@ -1,0 +1,42 @@
+name: Detect Platforms
+
+# Reusable workflow: reads the caller's Package.swift and produces a
+# GitHub Actions matrix (JSON) describing which platform build/test jobs
+# should run. See actions/detect-platforms for the underlying logic.
+#
+# This workflow is intentionally isolated: it has no knowledge of build,
+# lint, or any other concern. Its sole responsibility is producing the
+# matrix. Consumers wire its `matrix` output into other reusable workflows
+# (e.g. build-test.yml) via `needs`.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root (containing Package.swift)."
+        type: string
+        required: false
+        default: "."
+    outputs:
+      matrix:
+        description: "JSON object with an 'include' matrix of {platform, runner, kind, sdk?}."
+        value: ${{ jobs.detect.outputs.matrix }}
+
+jobs:
+  detect:
+    name: Detect supported platforms
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      # NOTE: `uses:` cannot reference expressions/contexts (GitHub Actions
+      # restriction), so the ref here is pinned as a static literal. It is
+      # bumped in lockstep whenever this workflow's own version tag moves.
+      - name: Detect platforms
+        id: detect
+        uses: adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1
+        with:
+          package-path: ${{ inputs.package-path }}

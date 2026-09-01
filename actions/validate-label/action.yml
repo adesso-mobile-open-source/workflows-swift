@@ -1,0 +1,19 @@
+name: "Validate Semver Label"
+description: >
+  Fails unless exactly one of the labels "bump:major", "bump:minor", or
+  "bump:patch" is present on the given list of labels. Intended for gating
+  pull requests so that every merge unambiguously declares its version bump.
+inputs:
+  labels-json:
+    description: >
+      JSON array of label name strings, e.g. '["bump:major"]'. Typically
+      supplied as toJSON(github.event.pull_request.labels.*.name).
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Validate exactly one semver label
+      shell: bash
+      run: |
+        chmod +x "${{ github.action_path }}/validate-label.sh"
+        "${{ github.action_path }}/validate-label.sh" '${{ inputs.labels-json }}'

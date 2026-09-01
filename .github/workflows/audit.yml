@@ -1,0 +1,53 @@
+name: Dependency Audit
+
+# Reusable workflow: lightweight sanity/audit check of the package's
+# dependency graph. Intentionally minimal - it resolves dependencies and
+# prints the dependency tree so drift/resolution issues surface in CI,
+# without pulling in third-party scanning actions.
+#
+# Isolated from lint/format/build-test: this workflow only concerns itself
+# with dependencies.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      swift-version:
+        description: >
+          Swift version to install. Defaults to the minimum version required by this
+          repository's tooling; override to pin a newer version.
+        type: string
+        required: false
+        default: "6.2"
+
+jobs:
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.package-path }}
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ inputs.swift-version }}
+
+      - name: Resolve dependencies
+        run: swift package resolve
+
+      - name: Show dependency graph
+        run: swift package show-dependencies
+
+      - name: GitHub dependency review (PRs only)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/dependency-review-action@v5
+        with:
+          config-file: 'adesso-mobile-open-source/shared-pipelines/.github/dependency-review-config.yml@v1'

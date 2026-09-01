@@ -1,0 +1,64 @@
+name: Lint
+
+# Reusable workflow: runs SwiftLint against the calling package.
+#
+# Uses cirruslabs/swiftlint-action, which downloads a self-contained
+# `swiftlint` binary directly (no Docker, no Swift toolchain needed just to
+# lint) and emits GitHub annotations from SwiftLint's JSON output. Works on
+# both ubuntu-latest and macos-latest runners.
+#
+# Config resolution:
+#   - The shared config from configs/.swiftlint.yml in this repository is
+#     ALWAYS enforced. Rules are intentionally not customizable per-package:
+#     a single, consistent lint config across all adesso mobile open source
+#     Swift packages is the point. A package-level `.swiftlint.yml` is
+#     ignored - it is never checked out or referenced by this workflow.
+#
+# Non-root packages: cirruslabs/swiftlint-action is a JavaScript action, and
+# GitHub Actions' `working-directory` only applies to `run:` steps - it has
+# no effect on `uses:` steps. So instead of changing the working directory,
+# `package-path` is passed as a positional argument to `swiftlint lint`,
+# scoping the scan to that directory regardless of where the action itself
+# executes (always $GITHUB_WORKSPACE). NOTE: this only works because the
+# shared default config does not set `included:` - SwiftLint ignores CLI
+# path arguments entirely when `included:` is present in the active config.
+#
+# Isolated from build-test/audit: this workflow only lints.
+
+on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: "Path to the Swift package root."
+        type: string
+        required: false
+        default: "."
+      swiftlint-version:
+        description: "SwiftLint version to use, or 'latest' for the latest available release."
+        type: string
+        required: false
+        default: "latest"
+
+jobs:
+  lint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout package
+        uses: actions/checkout@v4
+
+      - name: Checkout shared default config
+        uses: actions/checkout@v4
+        with:
+          repository: adesso-mobile-open-source/workflows-swift
+          ref: v1
+          path: .workflows-swift-config
+          sparse-checkout: |
+            configs/.swiftlint.yml
+          sparse-checkout-cone-mode: false
+
+      - name: Run SwiftLint
+        uses: cirruslabs/swiftlint-action@v1
+        with:
+          version: ${{ inputs.swiftlint-version }}
+          args: "--strict --config .workflows-swift-config/configs/.swiftlint.yml ${{ inputs.package-path }}"
