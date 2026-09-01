@@ -24,8 +24,24 @@
 #     below and the "Why this produces one job per platform" note further
 #     down for the mechanics.
 #
+# Linux support (2nd argument):
+#   SwiftPM's `platforms:` array can ONLY express Apple platforms (.macOS,
+#   .iOS, .watchOS, .tvOS, .visionOS, ...) - there is no `.linux` case, so
+#   whether a package is meant to be built/tested on Linux CANNOT be derived
+#   from Package.swift. The optional 2nd argument makes it configurable:
+#     auto   (default) - Linux is emitted ONLY as the cross-platform fallback
+#                        (i.e. when no/empty `platforms:` array is declared);
+#                        it is NOT added alongside declared Apple platforms.
+#     always           - a Linux job is ALWAYS emitted, in addition to any
+#                        declared Apple platforms (for pure-Swift libraries
+#                        that pin Apple minimums but also run on Linux).
+#     never            - a Linux job is NEVER emitted. If this would leave an
+#                        empty matrix (a cross-platform package with no Apple
+#                        platforms), the script fails loudly.
+#
 # Usage:
-#   detect-platforms.sh [package-path]
+#   detect-platforms.sh [package-path] [linux-mode]
+#     linux-mode: auto | always | never   (default: auto)
 #
 # Output (stdout): a single line of JSON, e.g.
 #   {"include":[{"platform":"linux","runner":"ubuntu-latest","kind":"spm"}]}
@@ -55,6 +71,17 @@ set -euo pipefail
 
 PACKAGE_PATH="${1:-.}"
 MANIFEST="$PACKAGE_PATH/Package.swift"
+
+# Linux support is not derivable from Package.swift (SwiftPM has no `.linux`
+# platform literal), so it is controlled by this optional 2nd argument.
+LINUX_MODE="${2:-auto}"
+case "$LINUX_MODE" in
+  auto | always | never) ;;
+  *)
+    echo "error: invalid linux mode '$LINUX_MODE' (expected: auto | always | never)" >&2
+    exit 1
+    ;;
+esac
 
 if [ ! -f "$MANIFEST" ]; then
   echo "error: Package.swift not found at '$MANIFEST'" >&2
@@ -172,20 +199,68 @@ platform_entry() {
 
 ENTRIES=()
 
+# 1) Build the base entries from what IS derivable from Package.swift.
+#    `HAS_LINUX` tracks whether the base logic already yields a Linux job, so
+#    the Linux-mode policy below can add/remove it idempotently.
+HAS_LINUX=0
 if [ "${#DECLARED_PLATFORMS[@]}" -eq 0 ]; then
   # No `platforms:` array declared, or it was explicitly empty (`[]`) ->
-  # treat as cross-platform, Linux only.
-  ENTRIES+=("$(platform_entry linux)")
+  # treat as cross-platform. Under `auto` this means Linux-only (the
+  # historical fallback); the Linux-mode policy below may still override it.
+  if [ "$LINUX_MODE" != "never" ]; then
+    ENTRIES+=("$(platform_entry linux)")
+    HAS_LINUX=1
+  fi
 else
   for name in "${DECLARED_PLATFORMS[@]}"; do
     if entry=$(platform_entry "$name"); then
       ENTRIES+=("$entry")
+      [ "$name" = "linux" ] && HAS_LINUX=1
     fi
   done
 fi
 
+# 2) Apply the Linux-support policy (see the "Linux support" note in the
+#    header). `auto` leaves the base result untouched; `always` guarantees a
+#    Linux job; `never` guarantees none.
+case "$LINUX_MODE" in
+  always)
+    if [ "$HAS_LINUX" -eq 0 ]; then
+      ENTRIES+=("$(platform_entry linux)")
+      HAS_LINUX=1
+    fi
+    ;;
+  never)
+    # Drop any Linux entry that slipped in via a declared `.linux` literal.
+    # NOTE: rebuild via a temp array, but only re-assign when it is non-empty.
+    # Expanding "${arr[@]}" on an EMPTY array under `set -u` is an error on
+    # bash 3.2 (macOS default / GitHub runners), so the empty case is handled
+    # by resetting ENTRIES to () explicitly and letting the guard below fail.
+    if [ "$HAS_LINUX" -eq 1 ]; then
+      FILTERED=()
+      for entry in "${ENTRIES[@]}"; do
+        case "$entry" in
+          *'"platform":"linux"'*) ;;                # skip Linux entries
+          *) FILTERED+=("$entry") ;;
+        esac
+      done
+      if [ "${#FILTERED[@]}" -gt 0 ]; then
+        ENTRIES=("${FILTERED[@]}")
+      else
+        ENTRIES=()
+      fi
+      HAS_LINUX=0
+    fi
+    ;;
+  auto) ;;
+esac
+
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
-  echo "error: no supported platforms could be resolved from Package.swift" >&2
+  if [ "$LINUX_MODE" = "never" ]; then
+    echo "error: linux mode is 'never' but no Apple platforms were declared in Package.swift - nothing to build" >&2
+  else
+    echo "error: no supported platforms could be resolved from Package.swift" >&2
+  fi
   exit 1
 fi
 

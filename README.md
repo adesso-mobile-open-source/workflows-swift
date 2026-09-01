@@ -13,7 +13,7 @@ invoked via `workflow_call`). Shared logic that isn't pure YAML lives in composi
 
 | Workflow | Responsibility | Runner(s) |
 |---|---|---|
-| `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. Falls back to Linux-only when no platforms are declared. | `ubuntu-latest` |
+| `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. Falls back to Linux-only when no platforms are declared; Linux inclusion is configurable via the `linux` input (`auto`/`always`/`never`). | `ubuntu-latest` |
 | `build-test.yml` | Builds and tests each matrix entry: `swift build && swift test` for `linux`/`macos`, `xcodebuild build test` against a simulator for `ios`/`watchos`/`tvos`/`visionos`. | `ubuntu-latest` / `macos-latest` |
 | `lint.yml` | Runs SwiftLint via [`cirruslabs/swiftlint-action`](https://github.com/cirruslabs/swiftlint-action), which downloads a self-contained `swiftlint` binary directly (no Docker/Swift toolchain needed). Always enforces the [shared config](configs/.swiftlint.yml) — not overridable per-package. | `ubuntu-latest` |
 | `swiftformat-apply.yml` | Runs [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) in apply mode against the [shared config](configs/.swiftformat) and opens a `bump:patch`-labeled pull request to `main` with the changes. Intended to be scheduled (e.g. weekly), not run on every PR. | `macos-latest` |
@@ -146,6 +146,29 @@ declared `platforms` array:
   since it's parsed as text rather than evaluated by the Swift compiler. A computed/dynamic platforms list
   (e.g. `platforms: someFunction()`) will cause the detect job to fail loudly rather than silently produce an
   incorrect matrix.
+
+### Linux support
+
+SwiftPM's `platforms:` array can only express Apple platforms — there is no `.linux` case — so **whether a
+package is built/tested on Linux cannot be derived from `Package.swift`**. It is controlled by the `linux`
+input (exposed on `pr-checks.yml` and `detect-platforms.yml`, default `auto`):
+
+- **`auto`** (default) — Linux runs only as the cross-platform fallback (i.e. when no `platforms:` array is
+  declared). It is not added alongside declared Apple platforms. Preserves historical behavior.
+- **`always`** — a Linux job always runs, in addition to any declared Apple platforms. Use this for
+  pure-Swift libraries that pin Apple minimums (e.g. `platforms: [.macOS(.v13), .iOS(.v16)]`) but also
+  support Linux.
+- **`never`** — no Linux job ever runs. Fails loudly if that would leave an empty matrix (a cross-platform
+  package with no Apple platforms).
+
+```yaml
+jobs:
+  checks:
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1
+    secrets: inherit
+    with:
+      linux: always   # auto | always | never
+```
 
 ## Swift version
 
