@@ -124,11 +124,17 @@ jobs:
         if: ${{ matrix.kind == 'xcodebuild' }}
         id: destination
         run: |
+          # Use the generic "Any <platform> Simulator Device" destinations
+          # rather than pinning a specific device name/OS. Concrete device
+          # names (e.g. "iPhone 15") and "OS=latest" break whenever the Xcode
+          # runner image bumps its bundled simulators, whereas these generic
+          # placeholders always exist and let xcodebuild pick whatever
+          # concrete simulator is installed.
           case "${{ matrix.platform }}" in
-            ios)      DEST="platform=iOS Simulator,name=iPhone 15,OS=latest" ;;
-            watchos)  DEST="platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=latest" ;;
-            tvos)     DEST="platform=tvOS Simulator,name=Apple TV,OS=latest" ;;
-            visionos) DEST="platform=visionOS Simulator,name=Apple Vision Pro,OS=latest" ;;
+            ios)      DEST="platform=iOS Simulator,name=Any iOS Simulator Device" ;;
+            watchos)  DEST="platform=watchOS Simulator,name=Any watchOS Simulator Device" ;;
+            tvos)     DEST="platform=tvOS Simulator,name=Any tvOS Simulator Device" ;;
+            visionos) DEST="platform=visionOS Simulator,name=Any visionOS Simulator Device" ;;
             *)
               echo "::error::unsupported xcodebuild platform: ${{ matrix.platform }}" >&2
               exit 1

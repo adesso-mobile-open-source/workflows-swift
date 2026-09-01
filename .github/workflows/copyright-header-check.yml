@@ -67,7 +67,13 @@ jobs:
 
           if [ "${#FAILED[@]}" -gt 0 ]; then
             echo "::error::${#FAILED[@]} Swift file(s) are missing the required copyright header"
+            # Print a plain, always-visible list in the job log. The
+            # `::error file=...::` annotations below surface in the GitHub UI
+            # but are capped at 10 per step and deduplicated, so they cannot
+            # be relied on to show every offending file - the plain list can.
+            echo "Swift file(s) missing the required copyright header:"
             for f in "${FAILED[@]}"; do
+              echo "  - $f"
               echo "::error file=$f::missing or invalid copyright header (expected 'Copyright <YEAR> adesso SE' + Apache 2.0 notice near the top of the file)"
             done
             exit 1
