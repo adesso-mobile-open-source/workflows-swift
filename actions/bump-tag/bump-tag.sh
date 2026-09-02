@@ -3,7 +3,7 @@
 # bump-tag.sh
 #
 # Computes the next semantic version tag based on the latest existing
-# `v<major>.<minor>.<patch>` tag and a bump level (major|minor|patch), then
+# `<major>.<minor>.<patch>` tag and a bump level (major|minor|patch), then
 # creates and pushes that tag pointing at the current commit (HEAD).
 #
 # This script does NOT create a GitHub Release - it only pushes the tag.
@@ -38,10 +38,10 @@ fi
 
 git fetch --tags --quiet || true
 
-LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
-LATEST_TAG="${LATEST_TAG:-v0.0.0}"
+LATEST_TAG=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+LATEST_TAG="${LATEST_TAG:-0.0.0}"
 
-VERSION="${LATEST_TAG#v}"
+VERSION="${LATEST_TAG}"
 IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
 MAJOR="${MAJOR:-0}"
@@ -63,7 +63,7 @@ case "$BUMP_LEVEL" in
     ;;
 esac
 
-NEXT_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+NEXT_TAG="${MAJOR}.${MINOR}.${PATCH}"
 
 echo "Latest tag: ${LATEST_TAG}"
 echo "Bump level: ${BUMP_LEVEL}"
