@@ -3,12 +3,23 @@ description: >
   Parses a Swift package's Package.swift directly (no Swift toolchain
   required) and produces a GitHub Actions matrix JSON describing which
   platform build/test jobs should run. Falls back to a Linux-only job when
-  no platforms are declared.
+  no platforms are declared. Linux support is not derivable from
+  Package.swift and is controlled by the `linux` input.
 inputs:
   package-path:
     description: "Path to the Swift package root (containing Package.swift)."
     required: false
     default: "."
+  linux:
+    description: >
+      Linux job policy. SwiftPM's `platforms:` array cannot express Linux, so
+      this is not derivable from Package.swift. One of:
+      `auto` (default) - Linux only as the cross-platform fallback (when no
+      `platforms:` array is declared); `always` - always add a Linux job in
+      addition to any declared Apple platforms; `never` - never emit a Linux
+      job (fails if that would leave an empty matrix).
+    required: false
+    default: "auto"
 outputs:
   matrix:
     description: "JSON object with an 'include' matrix of {platform, runner, kind, sdk?}."
@@ -21,6 +32,6 @@ runs:
       shell: bash
       run: |
         chmod +x "${{ github.action_path }}/detect-platforms.sh"
-        MATRIX=$("${{ github.action_path }}/detect-platforms.sh" "${{ inputs.package-path }}")
+        MATRIX=$("${{ github.action_path }}/detect-platforms.sh" "${{ inputs.package-path }}" "${{ inputs.linux }}")
         echo "Resolved matrix: $MATRIX"
         echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"

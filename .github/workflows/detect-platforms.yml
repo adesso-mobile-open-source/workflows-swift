@@ -17,6 +17,16 @@ on:
         type: string
         required: false
         default: "."
+      linux:
+        description: >
+          Linux job policy. Linux support cannot be derived from Package.swift
+          (SwiftPM has no `.linux` platform literal), so it is set here.
+          One of: `auto` (default, Linux only as the cross-platform fallback),
+          `always` (always add Linux alongside declared Apple platforms), or
+          `never` (never emit a Linux job).
+        type: string
+        required: false
+        default: "auto"
     outputs:
       matrix:
         description: "JSON object with an 'include' matrix of {platform, runner, kind, sdk?}."
@@ -30,7 +40,7 @@ jobs:
       matrix: ${{ steps.detect.outputs.matrix }}
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # NOTE: `uses:` cannot reference expressions/contexts (GitHub Actions
       # restriction), so the ref here is pinned as a static literal. It is
@@ -40,3 +50,4 @@ jobs:
         uses: adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1
         with:
           package-path: ${{ inputs.package-path }}
+          linux: ${{ inputs.linux }}

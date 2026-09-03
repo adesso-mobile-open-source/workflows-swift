@@ -21,3 +21,9 @@ jobs:
     #   package-path: "."
     #   scheme: "MyLibrary"
     #   swift-version: "6.2"
+    #   # Linux support is NOT derivable from Package.swift (SwiftPM has no
+    #   # `.linux` platform). Control it explicitly:
+    #   #   auto   (default) - Linux only when no `platforms:` array is declared
+    #   #   always           - also test on Linux alongside declared Apple platforms
+    #   #   never            - never run a Linux job
+    #   linux: "always"

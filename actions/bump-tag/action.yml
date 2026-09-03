@@ -1,7 +1,7 @@
 name: "Bump and Push Semver Tag"
 description: >
   Computes the next semantic version tag based on the latest existing
-  `v<major>.<minor>.<patch>` tag and a bump level (major|minor|patch), then
+  `<major>.<minor>.<patch>` tag and a bump level (major|minor|patch), then
   creates and pushes that tag pointing at HEAD. Does not create a GitHub
   Release. Requires the checkout step to use `fetch-depth: 0` so full tag
   history is available.
@@ -15,7 +15,7 @@ inputs:
     default: "false"
 outputs:
   next-tag:
-    description: "The computed next tag, e.g. v1.3.0."
+    description: "The computed next tag, e.g. 1.3.0."
     value: ${{ steps.bump.outputs.next-tag }}
 runs:
   using: "composite"

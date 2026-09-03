@@ -45,10 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Checkout shared default config
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: adesso-mobile-open-source/workflows-swift
           ref: v1
@@ -58,7 +58,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Run SwiftLint
-        uses: cirruslabs/swiftlint-action@v1
+        uses: cirruslabs/swiftlint-action@v1.1.0
         with:
           version: ${{ inputs.swiftlint-version }}
           args: "--strict --config .workflows-swift-config/configs/.swiftlint.yml ${{ inputs.package-path }}"

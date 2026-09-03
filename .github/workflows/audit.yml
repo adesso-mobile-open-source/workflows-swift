@@ -33,10 +33,10 @@ jobs:
         working-directory: ${{ inputs.package-path }}
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Swift
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@v2.4.0
         with:
           swift-version: ${{ inputs.swift-version }}
 

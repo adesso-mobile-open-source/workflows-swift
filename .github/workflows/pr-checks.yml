@@ -39,12 +39,22 @@ on:
         type: string
         required: false
         default: "6.2"
+      linux:
+        description: >
+          Linux job policy. Linux support cannot be derived from Package.swift
+          (SwiftPM has no `.linux` platform literal). One of: `auto` (default,
+          Linux only as the cross-platform fallback), `always` (always add
+          Linux alongside declared Apple platforms), or `never`.
+        type: string
+        required: false
+        default: "auto"
 
 jobs:
   detect:
     uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1
     with:
       package-path: ${{ inputs.package-path }}
+      linux: ${{ inputs.linux }}
 
   build-test:
     needs: detect

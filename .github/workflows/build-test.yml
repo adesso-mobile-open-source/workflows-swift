@@ -82,7 +82,7 @@ jobs:
         working-directory: ${{ inputs.package-path }}
     steps:
       - name: Checkout package
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The `matrix.kind == 'spm' / 'xcodebuild'` conditionals below are
       # what let one job definition serve every platform in the matrix
@@ -97,17 +97,17 @@ jobs:
       # failed.
       - name: Setup Swift
         if: ${{ matrix.kind == 'spm' }}
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@v2.4.0
         with:
           swift-version: ${{ inputs.swift-version }}
 
       - name: swift build
         if: ${{ matrix.kind == 'spm' }}
-        run: swift build --verbose
+        run: swift build
 
       - name: swift test
         if: ${{ matrix.kind == 'spm' }}
-        run: swift test --verbose
+        run: swift test
 
       - name: Resolve scheme
         if: ${{ matrix.kind == 'xcodebuild' }}
@@ -124,23 +124,76 @@ jobs:
         if: ${{ matrix.kind == 'xcodebuild' }}
         id: destination
         run: |
+          set -euo pipefail
+
+          # Resolve a CONCRETE simulator UDID at runtime rather than pinning a
+          # device name or using the generic "Any <platform> Simulator Device"
+          # placeholder.
+          #
+          # Why not "Any ... Simulator Device": that entry is a *placeholder*
+          # (its id is `dvtdevice-...placeholder`). xcodebuild accepts it for a
+          # plain `build`, but `build test` needs a real, bootable simulator,
+          # and xcodebuild additionally appends `OS:latest` to the specifier -
+          # which no placeholder satisfies - so it fails with "Unable to find a
+          # device matching the provided destination specifier".
+          #
+          # Why not a hardcoded name (e.g. "iPhone 15"): the devices bundled
+          # with the Xcode runner image change on every image bump, so any
+          # fixed name eventually disappears and breaks the pipeline.
+          #
+          # Instead: ask `xcrun simctl` for the available devices of the target
+          # runtime and pick the newest concrete one by UDID. A UDID is an
+          # unambiguous destination that never needs an OS= qualifier.
           case "${{ matrix.platform }}" in
-            ios)      DEST="platform=iOS Simulator,name=iPhone 15,OS=latest" ;;
-            watchos)  DEST="platform=watchOS Simulator,name=Apple Watch Series 9 (45mm),OS=latest" ;;
-            tvos)     DEST="platform=tvOS Simulator,name=Apple TV,OS=latest" ;;
-            visionos) DEST="platform=visionOS Simulator,name=Apple Vision Pro,OS=latest" ;;
+            ios)      PLATFORM_NAME="iOS Simulator";      RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.iOS" ;;
+            watchos)  PLATFORM_NAME="watchOS Simulator";  RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.watchOS" ;;
+            tvos)     PLATFORM_NAME="tvOS Simulator";     RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.tvOS" ;;
+            visionos) PLATFORM_NAME="visionOS Simulator"; RUNTIME_RE="com\\.apple\\.CoreSimulator\\.SimRuntime\\.xrOS" ;;
             *)
               echo "::error::unsupported xcodebuild platform: ${{ matrix.platform }}" >&2
               exit 1
               ;;
           esac
-          echo "value=$DEST" >> "$GITHUB_OUTPUT"
+
+          # Select, among all AVAILABLE devices whose runtime matches the
+          # target platform, the one on the newest runtime (runtime identifiers
+          # sort ascending by version, so `last` is newest). Emit its UDID.
+          UDID=$(xcrun simctl list devices available --json \
+            | jq -r --arg rt "$RUNTIME_RE" '
+                [ .devices
+                  | to_entries[]
+                  | select(.key | test($rt))
+                  | .value[]
+                  | select(.isAvailable == true)
+                  | .udid
+                ] | last // empty')
+
+          if [ -z "$UDID" ]; then
+            echo "::error::no available '$PLATFORM_NAME' simulator found on this runner" >&2
+            echo "Available simulators on this runner:" >&2
+            xcrun simctl list devices available >&2 || true
+            exit 1
+          fi
+
+          echo "Selected $PLATFORM_NAME simulator UDID: $UDID"
+          echo "value=platform=$PLATFORM_NAME,id=$UDID" >> "$GITHUB_OUTPUT"
 
       - name: xcodebuild build test
         if: ${{ matrix.kind == 'xcodebuild' }}
         run: |
+          # Pipe xcodebuild through xcbeautify to collapse the very verbose
+          # raw build log into concise lines while still surfacing compiler
+          # warnings/errors and per-test pass/fail. xcbeautify is preinstalled
+          # on GitHub macOS runners, so no install step is needed. The
+          # `github-actions` renderer emits inline GitHub annotations for
+          # warnings/errors.
+          #
+          # `set -o pipefail` is REQUIRED here: without it the pipeline's exit
+          # status would be xcbeautify's (which succeeds), masking a failing
+          # xcodebuild. With pipefail a build/test failure still fails the job.
           set -o pipefail
           xcodebuild build test \
             -scheme "${{ steps.scheme.outputs.name }}" \
             -destination "${{ steps.destination.outputs.value }}" \
-            -skipMacroValidation
+            -skipMacroValidation \
+            | xcbeautify --renderer github-actions
