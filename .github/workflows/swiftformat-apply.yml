@@ -86,7 +86,7 @@ jobs:
           swiftformat . --config "${{ github.workspace }}/.workflows-swift-config/configs/.swiftformat"
 
       - name: Open pull request with formatting changes
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
           # Scoped to package-path only, so the nested .workflows-swift-config
