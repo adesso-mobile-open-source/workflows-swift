@@ -12,4 +12,4 @@
 --exclude .build,.swiftpm
 
 # format options
---trailing-commas never
+--trailing-commas multi-element-lists
