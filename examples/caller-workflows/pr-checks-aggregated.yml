@@ -14,7 +14,7 @@ on:
 
 jobs:
   checks:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1.0.0
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1.0.2
     secrets: inherit
     # Optional inputs (all have sensible defaults):
     # with:
