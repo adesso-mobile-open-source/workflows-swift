@@ -26,7 +26,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1.0.0
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1.0.2
     # Optional inputs (all have sensible defaults):
     # with:
     #   package-path: "."
