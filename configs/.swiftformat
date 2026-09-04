@@ -1,15 +1,119 @@
-# Enforced SwiftFormat (https://github.com/nicklockwood/SwiftFormat)
-# configuration for adesso mobile open source Swift packages.
-#
-# This file is ALWAYS used by the `swiftformat-apply.yml` reusable workflow.
-# A package-level `.swiftformat` in a consuming repository has no effect and
-# is ignored - see swiftformat-apply.yml for why formatting is applied via a
-# scheduled PR rather than a per-package-configurable PR check.
-#
-# Intentionally left at SwiftFormat's built-in defaults (no rule/option
-# overrides) so behavior is predictable and unsurprising.
+# Updated for SwiftFormat 0.57.2
 
---exclude .build,.swiftpm
+# SwiftFormat documentation
+#
+# A detailed description of all existing rules and their parameters can be found here:
+# https://github.com/nicklockwood/SwiftFormat/blob/main/Rules.md
 
-# format options
---trailing-commas multi-element-lists
+# AMS SwiftFormat configuration
+#
+# A general overview of the AMS SwiftFormat configuration can be found here:
+# https://wiki.adesso-mobile.de/display/IOS/SwiftFormat
+
+# Lint with specified swift version
+--swiftversion 6.1
+# Lint only our code, not that of included pods
+--exclude "${PWD}/**/*/R.generated.swift"
+--exclude "${PWD}/Pods"
+--exclude "${PWD}/build"
+# Exclude AMSBiometry as we aim to include it as remote package
+--exclude "Modules/Foundation/AMSBiometry"
+# All Rules disabled by default
+--disable all
+# Always trim whitespaces
+--trimwhitespace "always"
+# 1 Tab = 4 Spaces
+--tabwidth 4
+# Do NOT use smarttabs
+--smarttabs "disabled"
+# IFDEFs start and end at beginning of line
+--ifdef "outdent"
+# Empty braces
+--emptyBraces "spaced"
+# Enabled rules
+--enable hoistAwait
+--enable consecutiveBlankLines
+--enable todos
+--enable indent
+--indent 4
+--indentcase "false"
+# AMS enabled rules
+--enable andOperator
+--enable anyObjectProtocol
+--enable applicationMain
+--enable assertionFailures
+--enable blankLineAfterImports
+--enable blankLinesAroundMark
+--enable blankLinesAtEndOfScope
+--enable blankLinesAtStartOfScope
+--enable blankLinesBetweenChainedFunctions
+--enable blankLinesBetweenImports
+--enable blankLinesBetweenScopes
+--enable blockComments
+--enable braces
+--enable conditionalAssignment
+--enable consecutiveSpaces
+--enable consistentSwitchCaseSpacing
+--enable docComments
+--enable duplicateImports
+--enable elseOnSameLine
+--enable emptyBraces
+--enable enumNamespaces
+--enable extensionAccessControl
+--enable headerFileName
+--enable hoistPatternLet
+--enable initCoderUnavailable
+--enable isEmpty
+--enable leadingDelimiters
+--enable linebreaks
+--enable modifierOrder
+--enable noExplicitOwnership
+--enable numberFormatting
+--enable opaqueGenericParameters
+--enable preferForLoop
+--enable redundantBreak
+--enable redundantClosure
+--enable redundantExtensionACL
+--enable redundantFileprivate
+--enable redundantGet
+--enable redundantInternal
+--enable redundantLet
+--enable redundantLetError
+--enable redundantNilInit
+--enable redundantObjc
+--enable redundantOptionalBinding
+--enable redundantParens
+--enable redundantPattern
+--enable redundantProperty
+--enable redundantRawValues
+--enable redundantReturn
+--enable redundantSelf
+--enable redundantType
+--enable redundantTypedThrows
+--enable redundantVoidReturnType
+--enable sortImports
+--enable sortTypealiases
+--enable spaceAroundBraces
+--enable spaceAroundBrackets
+--enable spaceAroundComments
+--enable spaceAroundGenerics
+--enable spaceAroundOperators
+--enable spaceAroundParens
+--enable spaceInsideBraces
+--enable spaceInsideBrackets
+--enable spaceInsideComments
+--enable spaceInsideGenerics
+--enable spaceInsideParens
+--enable strongifiedSelf
+--enable trailingSpace
+--enable typeSugar
+--enable unusedArguments
+--enable void
+--enable yodaConditions
+--enable redundantMemberwiseInit
+--enable redundantPublic
+--enable redundantEquatable
+# Added with update to 0.57.2
+--enable emptyExtensions
+--enable blankLinesAfterGuardStatements
+--enable swiftTestingTestCaseNames
