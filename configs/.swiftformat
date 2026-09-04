@@ -37,6 +37,7 @@
 --enable indent
 --indent 4
 --indentcase "false"
+--trailing-commas "never"
 # AMS enabled rules
 --enable andOperator
 --enable anyObjectProtocol
