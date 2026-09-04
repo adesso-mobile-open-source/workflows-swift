@@ -19,6 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate exactly one of bump:major/bump:minor/bump:patch
-        uses: adesso-mobile-open-source/workflows-swift/actions/validate-label@v1
+        uses: adesso-mobile-open-source/workflows-swift/actions/validate-label@v1.0.1
         with:
           labels-json: ${{ toJSON(github.event.pull_request.labels.*.name) }}

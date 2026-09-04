@@ -17,5 +17,5 @@ jobs:
   tag:
     permissions:
       contents: write
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1.0.1
     secrets: inherit

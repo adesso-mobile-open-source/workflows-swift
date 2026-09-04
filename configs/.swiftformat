@@ -11,13 +11,11 @@
 # https://wiki.adesso-mobile.de/display/IOS/SwiftFormat
 
 # Lint with specified swift version
---swiftversion 6.1
+--swiftversion 6.2
 # Lint only our code, not that of included pods
 --exclude "${PWD}/**/*/R.generated.swift"
 --exclude "${PWD}/Pods"
 --exclude "${PWD}/build"
-# Exclude AMSBiometry as we aim to include it as remote package
---exclude "Modules/Foundation/AMSBiometry"
 # All Rules disabled by default
 --disable all
 # Always trim whitespaces
@@ -37,6 +35,7 @@
 --enable indent
 --indent 4
 --indentcase "false"
+# No trailing commas
 --trailing-commas "never"
 # AMS enabled rules
 --enable andOperator
