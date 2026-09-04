@@ -51,6 +51,6 @@ jobs:
           exit 1
 
       - name: Bump and push tag
-        uses: adesso-mobile-open-source/workflows-swift/actions/bump-tag@v1.0.2
+        uses: adesso-mobile-open-source/workflows-swift/actions/bump-tag@v1.0.3
         with:
           bump-level: ${{ steps.bump-level.outputs.level }}

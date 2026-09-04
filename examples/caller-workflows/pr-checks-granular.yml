@@ -14,7 +14,7 @@ on:
 
 jobs:
   detect:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1.0.3
     # Linux support cannot be derived from Package.swift (SwiftPM has no
     # `.linux` platform literal). Defaults to `auto`; set `always` to also
     # test on Linux alongside declared Apple platforms, or `never` to skip it.
@@ -23,15 +23,15 @@ jobs:
 
   build-test:
     needs: detect
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1.0.3
     with:
       matrix: ${{ needs.detect.outputs.matrix }}
 
   lint:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1.0.3
 
   audit:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1.0.3
 
   copyright-header:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1.0.3

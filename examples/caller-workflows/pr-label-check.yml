@@ -14,4 +14,4 @@ on:
 
 jobs:
   label:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1.0.2
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1.0.3
