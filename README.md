@@ -49,7 +49,7 @@ on:
   pull_request: {}
 jobs:
   checks:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1.0.1
     secrets: inherit
 ```
 
@@ -66,7 +66,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 jobs:
   label:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-label-check.yml@v1.0.1
 ```
 
 ### 3. Auto-tag on merge to main
@@ -81,7 +81,7 @@ on:
 jobs:
   tag:
     permissions: { contents: write }
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/auto-tag.yml@v1.0.1
     secrets: inherit
 ```
 
@@ -97,7 +97,7 @@ on:
 jobs:
   swiftformat-apply:
     permissions: { contents: write, pull-requests: write }
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/swiftformat-apply.yml@v1.0.1
 ```
 
 This opens a `bump:patch`-labeled pull request against `main` with any formatting changes — see
@@ -164,7 +164,7 @@ input (exposed on `pr-checks.yml` and `detect-platforms.yml`, default `auto`):
 ```yaml
 jobs:
   checks:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@v1.0.1
     secrets: inherit
     with:
       linux: always   # auto | always | never
@@ -202,12 +202,12 @@ migrating to custom/self-hosted runners later only requires changing those value
   `swiftformat-apply.yml` uses the default `GITHUB_TOKEN` unless a `github-token` override is supplied, so
   `PR Checks`/`PR Label` won't run on it automatically — review and merge manually, or supply a PAT/App token.
 - **`uses:` cannot contain expressions.** Composite action references inside the reusable workflows (e.g.
-  `adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1`) are pinned to a static ref by necessity — this
+  `adesso-mobile-open-source/workflows-swift/actions/detect-platforms@v1.0.1`) are pinned to a static ref by necessity — this
   is a hard GitHub Actions restriction, not an oversight. Bump these refs in lockstep with this repository's
   version tags.
 
 ## Versioning of this repository
 
 This repository is tagged with semver tags (`1.2.3`) and a moving major tag (`v1`) that consuming packages
-pin against in their `uses:` references, e.g. `...@v1`. Update the moving major tag when publishing
+pin against in their `uses:` references, e.g. `...@v1.0.1`. Update the moving major tag when publishing
 backwards-compatible releases.

@@ -51,14 +51,14 @@ on:
 
 jobs:
   detect:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@v1.0.1
     with:
       package-path: ${{ inputs.package-path }}
       linux: ${{ inputs.linux }}
 
   build-test:
     needs: detect
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/build-test.yml@v1.0.1
     with:
       matrix: ${{ needs.detect.outputs.matrix }}
       package-path: ${{ inputs.package-path }}
@@ -66,17 +66,17 @@ jobs:
       swift-version: ${{ inputs.swift-version }}
 
   lint:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/lint.yml@v1.0.1
     with:
       package-path: ${{ inputs.package-path }}
 
   audit:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/audit.yml@v1.0.1
     with:
       package-path: ${{ inputs.package-path }}
       swift-version: ${{ inputs.swift-version }}
 
   copyright-header:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1
+    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/copyright-header-check.yml@v1.0.1
     with:
       package-path: ${{ inputs.package-path }}

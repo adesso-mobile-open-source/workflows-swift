@@ -58,7 +58,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Run SwiftLint
-        uses: cirruslabs/swiftlint-action@v1.1.0
+        uses: cirruslabs/swiftlint-action@v1
         with:
           version: ${{ inputs.swiftlint-version }}
           args: "--strict --config .workflows-swift-config/configs/.swiftlint.yml ${{ inputs.package-path }}"
