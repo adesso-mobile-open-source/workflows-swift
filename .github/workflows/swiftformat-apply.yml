@@ -85,12 +85,21 @@ jobs:
         run: |
           swiftformat . --config "${{ github.workspace }}/.workflows-swift-config/configs/.swiftformat"
 
+      - name: Remove shared config checkout
+        # The shared config is checked out into .workflows-swift-config inside
+        # the workspace (actions/checkout requires paths under GITHUB_WORKSPACE).
+        # It is its own separate git repo, so if it is still present when the PR
+        # step runs `git add`, git records it as a submodule gitlink and a stray
+        # "Subproject commit <sha>" entry leaks into the pull request. We only
+        # need the config during the SwiftFormat run above, so delete it now.
+        # This is more robust than relying on `add-paths` scoping, which does
+        # not exclude the nested checkout when package-path is the repo root (".").
+        run: rm -rf "${{ github.workspace }}/.workflows-swift-config"
+
       - name: Open pull request with formatting changes
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
-          # Scoped to package-path only, so the nested .workflows-swift-config
-          # checkout (its own separate git repo) is never picked up as a change.
           add-paths: ${{ inputs.package-path }}
           commit-message: "chore: apply SwiftFormat"
           branch: ${{ inputs.branch }}
