@@ -10,3 +10,6 @@
 # overrides) so behavior is predictable and unsurprising.
 
 --exclude .build,.swiftpm
+
+# rules
+--disable trailing-commas
