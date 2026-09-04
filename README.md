@@ -208,6 +208,6 @@ migrating to custom/self-hosted runners later only requires changing those value
 
 ## Versioning of this repository
 
-This repository is tagged with semver tags (`1.2.3`) and a moving major tag (`v1`) that consuming packages
+This repository is tagged with semver tags (`1.2.3`) and a moving major tag (`v1.0.0`) that consuming packages
 pin against in their `uses:` references, e.g. `...@v1.0.0`. Update the moving major tag when publishing
 backwards-compatible releases.
