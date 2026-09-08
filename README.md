@@ -208,6 +208,4 @@ migrating to custom/self-hosted runners later only requires changing those value
 
 ## Versioning of this repository
 
-This repository is tagged with semver tags (`1.2.3`) and a moving major tag (`main`) that consuming packages
-pin against in their `uses:` references, e.g. `...@main`. Update the moving major tag when publishing
-backwards-compatible releases.
+This repository is not tagged with semver tags (`1.2.3`), instead always the latest version on `main` should be used to make sure all shared libraries always use the same pipelines.
