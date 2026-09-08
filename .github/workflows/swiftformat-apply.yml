@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: adesso-mobile-open-source/workflows-swift
-          ref: v1.0.3
+          ref: main
           path: .workflows-swift-config
           sparse-checkout: |
             configs/.swiftformat
@@ -110,3 +110,4 @@ jobs:
             Automated weekly SwiftFormat run against the shared default
             config. Opened by the `swiftformat-apply.yml` reusable workflow.
           labels: "bump:patch"
+          sign-commits: true
