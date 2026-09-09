@@ -13,7 +13,7 @@ invoked via `workflow_call`). Shared logic that isn't pure YAML lives in composi
 
 | Workflow | Responsibility | Runner(s) |
 |---|---|---|
-| `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. Falls back to Linux-only when no platforms are declared; Linux inclusion is configurable via the `linux` input (`auto`/`always`/`never`). | `ubuntu-latest` |
+| `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. The `platforms:` array is the single source of truth; Linux is opted in via `.custom("linux", versionString: "...")` in that array (see [Linux support](#linux-support)). | `ubuntu-latest` |
 | `build-test.yml` | Builds and tests each matrix entry: `swift build && swift test` for `linux`/`macos`, `xcodebuild build test` against a simulator for `ios`/`watchos`/`tvos`/`visionos`. | `ubuntu-latest` / `macos-latest` |
 | `lint.yml` | Runs SwiftLint via [`cirruslabs/swiftlint-action`](https://github.com/cirruslabs/swiftlint-action), which downloads a self-contained `swiftlint` binary directly (no Docker/Swift toolchain needed). Always enforces the [shared config](configs/.swiftlint.yml) — not overridable per-package. | `ubuntu-latest` |
 | `swiftformat-apply.yml` | Runs [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) in apply mode against the [shared config](configs/.swiftformat) and opens a `bump:patch`-labeled pull request to `main` with the changes. Intended to be scheduled (e.g. weekly), not run on every PR. | `macos-latest` |
@@ -135,13 +135,14 @@ as a PR check.
 ## Platform detection behavior
 
 `detect-platforms.yml` parses `Package.swift` directly (no Swift toolchain install required) and inspects the
-declared `platforms` array:
+declared `platforms` array, which is the **single source of truth** for which jobs run:
 
-- **No `platforms:` declared, or declared as an empty array (`platforms: []`)** → treated as cross-platform,
-  a single Linux job runs.
-- **Platforms declared** → only those exact platforms run (no implicit Linux job is added). Apple platforms
-  (`ios`, `watchos`, `tvos`, `visionos`) run on `macos-latest` via `xcodebuild` against a simulator
-  destination; `macos` runs `swift build && swift test` on `macos-latest`; `linux` runs on `ubuntu-latest`.
+- **Platforms declared** → exactly those platforms run. Apple platforms (`ios`, `watchos`, `tvos`,
+  `visionos`) run on `macos-latest` via `xcodebuild` against a simulator destination; `macos` runs
+  `swift build && swift test` on `macos-latest`; `linux` (see below) runs `swift build && swift test` on
+  `ubuntu-latest`.
+- **No `platforms:` declared, or declared as an empty array (`platforms: []`)** → the matrix is empty and the
+  detect job **fails loudly**. Every package must declare at least one platform.
 - **Caveat:** the `platforms:` array must be a static literal (e.g. `platforms: [.iOS(.v16), .macOS(.v13)]`),
   since it's parsed as text rather than evaluated by the Swift compiler. A computed/dynamic platforms list
   (e.g. `platforms: someFunction()`) will cause the detect job to fail loudly rather than silently produce an
@@ -149,26 +150,34 @@ declared `platforms` array:
 
 ### Linux support
 
-SwiftPM's `platforms:` array can only express Apple platforms — there is no `.linux` case — so **whether a
-package is built/tested on Linux cannot be derived from `Package.swift`**. It is controlled by the `linux`
-input (exposed on `pr-checks.yml` and `detect-platforms.yml`, default `auto`):
+SwiftPM's `platforms:` array has no `.linux` `SupportedPlatform` case (a bare `.linux` literal is not valid
+Swift), so Linux is opted into by declaring a **custom platform** inside the same `platforms:` array:
 
-- **`auto`** (default) — Linux runs only as the cross-platform fallback (i.e. when no `platforms:` array is
-  declared). It is not added alongside declared Apple platforms. Preserves historical behavior.
-- **`always`** — a Linux job always runs, in addition to any declared Apple platforms. Use this for
-  pure-Swift libraries that pin Apple minimums (e.g. `platforms: [.macOS(.v13), .iOS(.v16)]`) but also
-  support Linux.
-- **`never`** — no Linux job ever runs. Fails loudly if that would leave an empty matrix (a cross-platform
-  package with no Apple platforms).
-
-```yaml
-jobs:
-  checks:
-    uses: adesso-mobile-open-source/workflows-swift/.github/workflows/pr-checks.yml@main
-    secrets: inherit
-    with:
-      linux: always   # auto | always | never
+```swift
+// Package.swift (requires swift-tools-version: 5.6 or newer)
+platforms: [.macOS(.v13), .custom("linux", versionString: "1.0")]
 ```
+
+Semantics are a strict boolean:
+
+- **`.custom("linux", ...)` present** → a Linux job (`swift build && swift test` on `ubuntu-latest`) runs, in
+  addition to any declared Apple platforms.
+- **`.custom("linux", ...)` absent** → no Linux job runs.
+
+This keeps the Linux decision in the repo-owned `Package.swift` rather than in a template-synced workflow, so
+it never surfaces as template drift. There is **no** `linux` workflow input — declaring the custom platform is
+the only way to enable a Linux job.
+
+For a package that should build **only** on Linux, declare it as the sole platform:
+
+```swift
+platforms: [.custom("linux", versionString: "1.0")]
+```
+
+> **Migration note:** this replaces the previous `linux: auto | always | never` workflow input. There is no
+> implicit Linux fallback anymore — a cross-platform package that previously relied on "no `platforms:` array
+> ⇒ Linux-only" must now declare its platforms explicitly (add `.custom("linux", versionString: "1.0")` to get
+> the Linux job back). Callers still passing a `linux:` input will fail until it is removed.
 
 ## Swift version
 
