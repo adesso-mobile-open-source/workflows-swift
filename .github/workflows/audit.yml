@@ -46,8 +46,11 @@ jobs:
       - name: Show dependency graph
         run: swift package show-dependencies
 
-      - name: GitHub dependency review (PRs only)
-        if: ${{ github.event_name == 'pull_request' }}
+      - name: GitHub dependency review (PRs only, public repos)
+        # dependency-review-action requires the Dependency Graph, which on
+        # private repos needs GitHub Advanced Security. Skip on private repos
+        # so the audit job still succeeds via resolve + show-dependencies.
+        if: ${{ github.event_name == 'pull_request' && github.event.repository.private == false }}
         uses: actions/dependency-review-action@v5
         with:
           config-file: 'adesso-mobile-open-source/shared-pipelines/.github/dependency-review-config.yml@main'
