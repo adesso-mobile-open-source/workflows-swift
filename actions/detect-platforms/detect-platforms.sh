@@ -7,41 +7,40 @@
 # platform jobs should run.
 #
 # Rules:
-#   - If the manifest declares NO `platforms:` array, the package is
-#     treated as cross-platform and only a Linux job is emitted.
-#   - If a `platforms:` array IS declared, only the platforms found in that
-#     array are emitted (no implicit Linux job is added). The array must be
-#     a static literal (e.g. `platforms: [.iOS(.v16), .macOS(.v13)]`) -
-#     computed/dynamic platform lists are not supported and cause a loud
-#     failure rather than silently producing an incorrect matrix.
+#   - The `platforms:` array is the single source of truth for which jobs
+#     run. Every recognized platform literal in that array becomes its own
+#     matrix entry (one parallel job per platform - there is no "pick one"
+#     behavior). The array must be a static literal (e.g.
+#     `platforms: [.iOS(.v16), .macOS(.v13)]`) - computed/dynamic platform
+#     lists are not supported and cause a loud failure rather than silently
+#     producing an incorrect matrix.
 #   - Apple platforms (ios, macos, watchos, tvos, visionos) map to
-#     macos-latest runners. Everything else not covered maps to Linux.
-#   - Multiple platforms declared together are all emitted - there is no
-#     "pick one" behavior. Every recognized platform literal in the array
-#     becomes its own matrix entry, so declaring several Apple platforms at
-#     once (e.g. an app that ships on macOS, iOS, and watchOS) produces one
-#     job per platform, all running in parallel. See the worked example
-#     below and the "Why this produces one job per platform" note further
-#     down for the mechanics.
+#     macos-latest runners (macos runs `swift build && swift test`; the
+#     simulator platforms run `xcodebuild` against a simulator destination).
+#   - If NO `platforms:` array is declared (or it is empty, `[]`), the
+#     matrix is empty and the script fails loudly - a package must declare
+#     at least one platform (see "Linux support" below for how to opt in to
+#     a Linux job).
 #
-# Linux support (2nd argument):
-#   SwiftPM's `platforms:` array can ONLY express Apple platforms (.macOS,
-#   .iOS, .watchOS, .tvOS, .visionOS, ...) - there is no `.linux` case, so
-#   whether a package is meant to be built/tested on Linux CANNOT be derived
-#   from Package.swift. The optional 2nd argument makes it configurable:
-#     auto   (default) - Linux is emitted ONLY as the cross-platform fallback
-#                        (i.e. when no/empty `platforms:` array is declared);
-#                        it is NOT added alongside declared Apple platforms.
-#     always           - a Linux job is ALWAYS emitted, in addition to any
-#                        declared Apple platforms (for pure-Swift libraries
-#                        that pin Apple minimums but also run on Linux).
-#     never            - a Linux job is NEVER emitted. If this would leave an
-#                        empty matrix (a cross-platform package with no Apple
-#                        platforms), the script fails loudly.
+# Linux support:
+#   SwiftPM's `platforms:` array has no `.linux` case in its `SupportedPlatform`
+#   factories, so a bare `.linux` literal is not valid Swift. Linux is opted
+#   into explicitly by declaring a custom platform inside the SAME `platforms:`
+#   array:
+#
+#     platforms: [.macOS(.v13), .custom("linux", versionString: "1.0")]
+#
+#   This is valid Swift (PackageDescription >= 5.6 / swift-tools-version >= 5.6)
+#   and lives in the repo-owned Package.swift rather than in a template-synced
+#   workflow input, so it never shows up as template drift. Semantics are a
+#   strict boolean:
+#     - `.custom("linux", ...)` present  -> a Linux job (ubuntu-latest, spm) runs.
+#     - `.custom("linux", ...)` absent   -> no Linux job runs.
+#   There is no implicit Linux fallback: a package with no `platforms:` array
+#   (or an empty one) resolves to an empty matrix and fails loudly.
 #
 # Usage:
-#   detect-platforms.sh [package-path] [linux-mode]
-#     linux-mode: auto | always | never   (default: auto)
+#   detect-platforms.sh [package-path]
 #
 # Output (stdout): a single line of JSON, e.g.
 #   {"include":[{"platform":"linux","runner":"ubuntu-latest","kind":"spm"}]}
@@ -52,36 +51,25 @@
 # Worked example - multiple platforms declared together:
 #
 #   Given this Package.swift:
-#     platforms: [.macOS(.v13), .iOS(.v16), .watchOS(.v9)]
+#     platforms: [.macOS(.v13), .iOS(.v16), .custom("linux", versionString: "1.0")]
 #
 #   This script emits (formatted here for readability; actual output is a
 #   single line):
 #     {"include":[
 #       {"platform":"macos","runner":"macos-latest","kind":"spm"},
 #       {"platform":"ios","runner":"macos-latest","kind":"xcodebuild","sdk":"iphonesimulator"},
-#       {"platform":"watchos","runner":"macos-latest","kind":"xcodebuild","sdk":"watchsimulator"}
+#       {"platform":"linux","runner":"ubuntu-latest","kind":"spm"}
 #     ]}
 #
 #   Each object in "include" is consumed by build-test.yml as exactly one
 #   matrix job (see that workflow's `strategy.matrix` for how GitHub Actions
-#   turns this array into three parallel "macos" / "ios" / "watchos" jobs -
-#   no cartesian product, no extra config needed per platform).
+#   turns this array into parallel jobs - no cartesian product, no extra
+#   config needed per platform).
 
 set -euo pipefail
 
 PACKAGE_PATH="${1:-.}"
 MANIFEST="$PACKAGE_PATH/Package.swift"
-
-# Linux support is not derivable from Package.swift (SwiftPM has no `.linux`
-# platform literal), so it is controlled by this optional 2nd argument.
-LINUX_MODE="${2:-auto}"
-case "$LINUX_MODE" in
-  auto | always | never) ;;
-  *)
-    echo "error: invalid linux mode '$LINUX_MODE' (expected: auto | always | never)" >&2
-    exit 1
-    ;;
-esac
 
 if [ ! -f "$MANIFEST" ]; then
   echo "error: Package.swift not found at '$MANIFEST'" >&2
@@ -92,8 +80,9 @@ fi
 # extraction (no Swift compiler involved): it assumes the array is a static
 # literal that does not itself span nested `[`/`]` pairs - true for every
 # supported platform literal (e.g. `.iOS(.v16)` uses parentheses, not
-# brackets, for its version specifier), so the first `]` encountered after
-# `platforms:` closes the array in all realistic manifests.
+# brackets, for its version specifier, and `.custom("linux", ...)` likewise),
+# so the first `]` encountered after `platforms:` closes the array in all
+# realistic manifests.
 PLATFORMS_BLOCK=""
 FOUND_KEY=0
 IN_BLOCK=0
@@ -120,9 +109,10 @@ if [ "$FOUND_KEY" -eq 1 ] && ! printf '%s' "$PLATFORMS_BLOCK" | grep -q ']'; the
   exit 1
 fi
 
-# An explicitly empty array (`platforms: []`) is a valid, common way to mark
-# a package as cross-platform - distinguish it from a non-empty array we
-# simply failed to parse (which is treated as an error below).
+# An explicitly empty array (`platforms: []`) is distinguished from a
+# non-empty array we simply failed to parse (which is treated as an error
+# below). Both an empty array and a missing array resolve to an empty matrix
+# and fail loudly further down.
 PLATFORMS_ARRAY_EMPTY=0
 if [ "$FOUND_KEY" -eq 1 ]; then
   INNER=$(printf '%s' "$PLATFORMS_BLOCK" | sed -E 's/^[^\[]*\[//; s/\].*$//')
@@ -131,34 +121,46 @@ if [ "$FOUND_KEY" -eq 1 ]; then
   fi
 fi
 
-# Map a declared platform literal (e.g. ".iOS") to its lowercase name.
+# Detect an opt-in Linux job. SwiftPM has no `.linux` SupportedPlatform
+# factory, so Linux is declared via `.custom("linux", versionString: "...")`
+# inside the same `platforms:` array. Match is tolerant of whitespace and
+# either single or double quotes around the platform name, e.g.
+#   .custom("linux", versionString: "1.0")
+#   .custom( 'linux' , versionString: "1.0" )
+HAS_CUSTOM_LINUX=0
+if [ "$FOUND_KEY" -eq 1 ] && [ "$PLATFORMS_ARRAY_EMPTY" -eq 0 ]; then
+  if printf '%s' "$PLATFORMS_BLOCK" \
+    | grep -qE '\.custom[[:space:]]*\([[:space:]]*["'\'']linux["'\'']'; then
+    HAS_CUSTOM_LINUX=1
+  fi
+fi
+
+# Map a declared Apple platform literal (e.g. ".iOS") to its lowercase name.
 # Matching is case-sensitive, mirroring the exact enum case spelling Swift
 # itself requires (e.g. `.iOS`, not `.ios`).
 # NOTE: avoid `mapfile`/`readarray` (bash 4+) for portability - macOS ships
 # bash 3.2, and GitHub's macos-latest runners default to it as well.
 # Why multi-platform declarations work: `grep -oE` (the `-o` flag) prints
 # EVERY non-overlapping match in the block, not just the first - so a
-# manifest declaring `[.macOS(.v13), .iOS(.v16), .watchOS(.v9)]` yields
-# three separate lines (macos / ios / watchos) here, not one. The final
-# `awk '!seen[$0]++'` only removes exact duplicates (e.g. if a platform
-# literal appeared twice by mistake); it does not collapse distinct
-# platforms into one. Each surviving name below becomes its own matrix
-# entry further down, which is what ultimately produces one parallel job
-# per declared platform in the GitHub Actions matrix.
+# manifest declaring `[.macOS(.v13), .iOS(.v16)]` yields two separate lines
+# (macos / ios) here, not one. The final `awk '!seen[$0]++'` only removes
+# exact duplicates; it does not collapse distinct platforms into one.
+# The `.custom("linux", ...)` literal is handled separately (above) and is
+# intentionally NOT matched here.
 DECLARED_PLATFORMS=()
 if [ "$FOUND_KEY" -eq 1 ] && [ "$PLATFORMS_ARRAY_EMPTY" -eq 0 ]; then
   while IFS= read -r name; do
     [ -n "$name" ] && DECLARED_PLATFORMS+=("$name")
   done < <(
     printf '%s' "$PLATFORMS_BLOCK" \
-      | grep -oE '\.(iOS|macOS|watchOS|tvOS|visionOS|linux|macCatalyst|driverKit)\b' \
+      | grep -oE '\.(iOS|macOS|watchOS|tvOS|visionOS|macCatalyst|driverKit)\b' \
       | sed 's/^\.//' \
       | tr '[:upper:]' '[:lower:]' \
       | awk '!seen[$0]++'
   )
 
-  if [ "${#DECLARED_PLATFORMS[@]}" -eq 0 ]; then
-    echo "error: found 'platforms:' in Package.swift but could not recognize any platform literal inside it - the array may use unsupported formatting or be computed rather than a static literal" >&2
+  if [ "${#DECLARED_PLATFORMS[@]}" -eq 0 ] && [ "$HAS_CUSTOM_LINUX" -eq 0 ]; then
+    echo "error: found 'platforms:' in Package.swift but could not recognize any supported platform literal inside it - the array may use unsupported formatting or be computed rather than a static literal" >&2
     exit 1
   fi
 fi
@@ -199,68 +201,21 @@ platform_entry() {
 
 ENTRIES=()
 
-# 1) Build the base entries from what IS derivable from Package.swift.
-#    `HAS_LINUX` tracks whether the base logic already yields a Linux job, so
-#    the Linux-mode policy below can add/remove it idempotently.
-HAS_LINUX=0
-if [ "${#DECLARED_PLATFORMS[@]}" -eq 0 ]; then
-  # No `platforms:` array declared, or it was explicitly empty (`[]`) ->
-  # treat as cross-platform. Under `auto` this means Linux-only (the
-  # historical fallback); the Linux-mode policy below may still override it.
-  if [ "$LINUX_MODE" != "never" ]; then
-    ENTRIES+=("$(platform_entry linux)")
-    HAS_LINUX=1
+# Build one entry per recognized Apple platform declared in the array.
+for name in "${DECLARED_PLATFORMS[@]:-}"; do
+  [ -z "$name" ] && continue
+  if entry=$(platform_entry "$name"); then
+    ENTRIES+=("$entry")
   fi
-else
-  for name in "${DECLARED_PLATFORMS[@]}"; do
-    if entry=$(platform_entry "$name"); then
-      ENTRIES+=("$entry")
-      [ "$name" = "linux" ] && HAS_LINUX=1
-    fi
-  done
+done
+
+# Add the Linux entry iff the package opted in via `.custom("linux", ...)`.
+if [ "$HAS_CUSTOM_LINUX" -eq 1 ]; then
+  ENTRIES+=("$(platform_entry linux)")
 fi
 
-# 2) Apply the Linux-support policy (see the "Linux support" note in the
-#    header). `auto` leaves the base result untouched; `always` guarantees a
-#    Linux job; `never` guarantees none.
-case "$LINUX_MODE" in
-  always)
-    if [ "$HAS_LINUX" -eq 0 ]; then
-      ENTRIES+=("$(platform_entry linux)")
-      HAS_LINUX=1
-    fi
-    ;;
-  never)
-    # Drop any Linux entry that slipped in via a declared `.linux` literal.
-    # NOTE: rebuild via a temp array, but only re-assign when it is non-empty.
-    # Expanding "${arr[@]}" on an EMPTY array under `set -u` is an error on
-    # bash 3.2 (macOS default / GitHub runners), so the empty case is handled
-    # by resetting ENTRIES to () explicitly and letting the guard below fail.
-    if [ "$HAS_LINUX" -eq 1 ]; then
-      FILTERED=()
-      for entry in "${ENTRIES[@]}"; do
-        case "$entry" in
-          *'"platform":"linux"'*) ;;                # skip Linux entries
-          *) FILTERED+=("$entry") ;;
-        esac
-      done
-      if [ "${#FILTERED[@]}" -gt 0 ]; then
-        ENTRIES=("${FILTERED[@]}")
-      else
-        ENTRIES=()
-      fi
-      HAS_LINUX=0
-    fi
-    ;;
-  auto) ;;
-esac
-
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
-  if [ "$LINUX_MODE" = "never" ]; then
-    echo "error: linux mode is 'never' but no Apple platforms were declared in Package.swift - nothing to build" >&2
-  else
-    echo "error: no supported platforms could be resolved from Package.swift" >&2
-  fi
+  echo "error: no platforms resolved from Package.swift - declare at least one platform in the 'platforms:' array (Apple platforms via e.g. '.macOS(.v13)', and/or Linux via '.custom(\"linux\", versionString: \"1.0\")')" >&2
   exit 1
 fi
 
@@ -273,7 +228,7 @@ fi
 # EXACTLY ONE job per object in the array - no combining, no cartesian
 # product. That is precisely what we want here: each object already fully
 # describes one job (its platform, runner, and how to build/test it), so a
-# 3-entry array (e.g. macos + ios + watchos) becomes 3 parallel jobs, and a
+# 3-entry array (e.g. macos + ios + linux) becomes 3 parallel jobs, and a
 # 1-entry array (e.g. linux only) becomes exactly 1 job.
 #
 # The caller consumes this via `fromJSON(...)` to turn this JSON string

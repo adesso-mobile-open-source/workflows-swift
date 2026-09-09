@@ -15,11 +15,10 @@ on:
 jobs:
   detect:
     uses: adesso-mobile-open-source/workflows-swift/.github/workflows/detect-platforms.yml@main
-    # Linux support cannot be derived from Package.swift (SwiftPM has no
-    # `.linux` platform literal). Defaults to `auto`; set `always` to also
-    # test on Linux alongside declared Apple platforms, or `never` to skip it.
-    # with:
-    #   linux: always
+    # Which platforms run (including Linux) is derived entirely from the
+    # `platforms:` array in your Package.swift. Opt in to a Linux job by
+    # adding a custom platform, e.g.:
+    #   platforms: [.macOS(.v13), .custom("linux", versionString: "1.0")]
 
   build-test:
     needs: detect
