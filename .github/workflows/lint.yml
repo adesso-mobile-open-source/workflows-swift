@@ -57,7 +57,30 @@ jobs:
             configs/.swiftlint.yml
           sparse-checkout-cone-mode: false
 
+      # Having no Swift files to lint is an acceptable scenario (e.g. an empty
+      # or docs-only package), but SwiftLint's `--strict` mode treats "No
+      # lintable files found" as an error and exits non-zero. Since
+      # cirruslabs/swiftlint-action is a JS (`uses:`) action, its exit code
+      # cannot be tolerated inline, so guard it: only run SwiftLint when there
+      # is at least one .swift file under package-path. The shared config
+      # checkout lives in `.workflows-swift-config`, so exclude it from the
+      # search to avoid counting its own files.
+      - name: Check for lintable Swift files
+        id: swift
+        run: |
+          set -euo pipefail
+          if find "${{ inputs.package-path }}" \
+            -path './.workflows-swift-config' -prune -o \
+            -name '*.swift' -type f -print \
+            | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No lintable Swift files found under '${{ inputs.package-path }}' - skipping SwiftLint (this is an acceptable scenario)."
+          fi
+
       - name: Run SwiftLint
+        if: ${{ steps.swift.outputs.found == 'true' }}
         uses: cirruslabs/swiftlint-action@v1.1.0
         with:
           version: ${{ inputs.swiftlint-version }}

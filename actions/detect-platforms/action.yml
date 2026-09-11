@@ -5,8 +5,9 @@ description: >
   platform build/test jobs should run. The `platforms:` array is the single
   source of truth: Apple platforms map to their jobs, and a Linux job is
   emitted only when the package opts in via
-  `.custom("linux", versionString: "...")` in that array. Fails loudly if no
-  platforms are declared.
+  `.custom("linux", versionString: "...")` in that array. Fails loudly if a
+  Package.swift is present but declares no platforms; if no Package.swift
+  exists at all, it logs a warning and emits an empty matrix.
 inputs:
   package-path:
     description: "Path to the Swift package root (containing Package.swift)."
