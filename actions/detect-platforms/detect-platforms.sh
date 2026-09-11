@@ -17,10 +17,13 @@
 #   - Apple platforms (ios, macos, watchos, tvos, visionos) map to
 #     macos-latest runners (macos runs `swift build && swift test`; the
 #     simulator platforms run `xcodebuild` against a simulator destination).
-#   - If NO `platforms:` array is declared (or it is empty, `[]`), the
-#     matrix is empty and the script fails loudly - a package must declare
-#     at least one platform (see "Linux support" below for how to opt in to
-#     a Linux job).
+#   - If NO `platforms:` array is declared (or it is empty, `[]`) in a
+#     Package.swift that DOES exist, the matrix is empty and the script fails
+#     loudly - such a package must declare at least one platform (see "Linux
+#     support" below for how to opt in to a Linux job).
+#   - If there is NO Package.swift at all, that is a tolerated scenario: the
+#     script logs a warning and emits an empty matrix (exit 0) rather than
+#     failing.
 #
 # Linux support:
 #   SwiftPM's `platforms:` array has no `.linux` case in its `SupportedPlatform`
@@ -36,8 +39,9 @@
 #   strict boolean:
 #     - `.custom("linux", ...)` present  -> a Linux job (ubuntu-latest, spm) runs.
 #     - `.custom("linux", ...)` absent   -> no Linux job runs.
-#   There is no implicit Linux fallback: a package with no `platforms:` array
-#   (or an empty one) resolves to an empty matrix and fails loudly.
+#   There is no implicit Linux fallback: an existing package with no
+#   `platforms:` array (or an empty one) resolves to an empty matrix and fails
+#   loudly. (A missing Package.swift instead warns and emits an empty matrix.)
 #
 # Usage:
 #   detect-platforms.sh [package-path]
@@ -72,8 +76,15 @@ PACKAGE_PATH="${1:-.}"
 MANIFEST="$PACKAGE_PATH/Package.swift"
 
 if [ ! -f "$MANIFEST" ]; then
-  echo "error: Package.swift not found at '$MANIFEST'" >&2
-  exit 1
+  # A missing Package.swift is a tolerated scenario (e.g. a repo that has no
+  # Swift package yet): emit an empty matrix and log a warning rather than
+  # failing. An empty `{"include":[]}` matrix is consumed safely downstream -
+  # build-test.yml simply expands it into zero jobs. Note this is distinct
+  # from a PRESENT manifest with no/empty/unparseable `platforms:` array,
+  # which remains a loud failure below.
+  echo "::warning::Package.swift not found at '$MANIFEST' - no platforms detected; skipping build/test." >&2
+  echo '{"include":[]}'
+  exit 0
 fi
 
 # Extract the `platforms: [ ... ]` array, if present. This is a plain-text

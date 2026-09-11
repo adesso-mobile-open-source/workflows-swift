@@ -40,11 +40,25 @@ jobs:
         with:
           swift-version: ${{ inputs.swift-version }}
 
+      # A missing Package.swift is a tolerated scenario (e.g. a repo with no
+      # Swift package yet): warn and skip resolution rather than failing the
+      # build. `swift package resolve`/`show-dependencies` both require a
+      # manifest, so guard both against its absence.
       - name: Resolve dependencies
-        run: swift package resolve
+        run: |
+          if [ ! -f Package.swift ]; then
+            echo "::warning::Package.swift not found - skipping dependency resolution."
+            exit 0
+          fi
+          swift package resolve
 
       - name: Show dependency graph
-        run: swift package show-dependencies
+        run: |
+          if [ ! -f Package.swift ]; then
+            echo "::warning::Package.swift not found - skipping dependency graph."
+            exit 0
+          fi
+          swift package show-dependencies
 
       - name: GitHub dependency review (PRs only, public repos)
         # dependency-review-action requires the Dependency Graph, which on
