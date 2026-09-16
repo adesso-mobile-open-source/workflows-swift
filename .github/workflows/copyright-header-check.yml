@@ -15,6 +15,17 @@ name: Copyright Header Check
 # `//` line-comment and `/* ... */` block-comment styles, so it does not
 # require byte-exact placement at line 1.
 #
+# Per-file exception: a file may opt out of the Apache 2.0 header
+# requirement by placing the marker
+#
+#   // copyright-header:allow-exception
+#
+# on the FIRST line of the file (analogous to `//swiftlint:disable`). This
+# is intended for files that must retain a different copyright header, e.g.
+# third-party code vendored under another license (MIT, ...). Exempted
+# files are NOT failed, but each emits a warning so the exception can be
+# audited and confirmed to be legitimate.
+#
 # Isolated from lint/build-test/audit: this workflow only checks headers.
 
 on:
@@ -57,6 +68,14 @@ jobs:
           # same pattern matches both comment styles.
           HEADER_PATTERN='(?s)Copyright\s+[0-9]{4}\s+adesso SE.*?Licensed under the Apache License, Version 2\.0 \(the "License"\);.*?you may not use this file except in compliance with the License\..*?You may obtain a copy of the License at.*?http://www\.apache\.org/licenses/LICENSE-2\.0'
 
+          # Per-file opt-out marker. When present on the FIRST line of a file
+          # (after stripping comment markers, so both // and /* ... */ styles
+          # work), the Apache 2.0 header requirement is waived for that file
+          # and a warning is emitted instead of a failure. Intended for
+          # vendored third-party code that must keep a different license
+          # header (e.g. MIT).
+          EXCEPTION_MARKER='copyright-header:allow-exception'
+
           # Human-readable rendition of the required header, printed to the
           # log whenever the check fails so contributors see exactly what is
           # expected without hunting through the workflow source. Built with a
@@ -71,7 +90,18 @@ jobs:
             '  // http://www.apache.org/licenses/LICENSE-2.0')
 
           FAILED=()
+          EXEMPTED=()
           while IFS= read -r -d '' file; do
+            # First line only, with comment markers stripped, so an exception
+            # marker in either // or /* ... */ style is recognised.
+            first_line=$(head -n 1 "$file" | sed -E 's#^[[:space:]]*(//|/\*+|\*/|\*)[[:space:]]?##')
+            case "$first_line" in
+              *"$EXCEPTION_MARKER"*)
+                EXEMPTED+=("$file")
+                continue
+                ;;
+            esac
+
             cleaned=$(head -n "$HEADER_SCAN_LINES" "$file" | sed -E 's#^[[:space:]]*(//|/\*+|\*/|\*)[[:space:]]?##')
             if ! printf '%s' "$cleaned" | grep -Pzoq "$HEADER_PATTERN"; then
               FAILED+=("$file")
@@ -82,6 +112,20 @@ jobs:
             -not -path '*/Pods/*' \
             -not -path '*/DerivedData/*' \
             -print0)
+
+          # Surface granted exceptions as warnings (always visible, plus a
+          # per-file annotation) so each opt-out can be reviewed and confirmed
+          # legitimate. This runs regardless of whether other files fail.
+          if [ "${#EXEMPTED[@]}" -gt 0 ]; then
+            echo "::warning::${#EXEMPTED[@]} Swift file(s) granted a copyright header exception - review these"
+            echo "=================================================================="
+            echo "Copyright header exception granted for ${#EXEMPTED[@]} Swift file(s) (review these):"
+            for f in "${EXEMPTED[@]}"; do
+              echo "  ! $f"
+              echo "::warning file=$f::copyright header exception granted via '// copyright-header:allow-exception' marker - verify this is intentional"
+            done
+            echo "=================================================================="
+          fi
 
           if [ "${#FAILED[@]}" -gt 0 ]; then
             echo "::error::${#FAILED[@]} Swift file(s) are missing the required copyright header"
