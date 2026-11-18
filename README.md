@@ -14,10 +14,10 @@ invoked via `workflow_call`). Shared logic that isn't pure YAML lives in composi
 | Workflow | Responsibility | Runner(s) |
 |---|---|---|
 | `detect-platforms.yml` | Reads `Package.swift` and produces a build matrix. The `platforms:` array is the single source of truth; Linux is opted in via `.custom("linux", versionString: "...")` in that array (see [Linux support](#linux-support)). | `ubuntu-latest` |
-| `build-test.yml` | Builds and tests each matrix entry: `swift build && swift test` for `linux`/`macos`, `xcodebuild build test` against a simulator for `ios`/`watchos`/`tvos`/`visionos`. | `ubuntu-latest` / `macos-latest` |
-| `lint.yml` | Runs SwiftLint via [`cirruslabs/swiftlint-action`](https://github.com/cirruslabs/swiftlint-action), which downloads a self-contained `swiftlint` binary directly (no Docker/Swift toolchain needed). Always enforces the [shared config](configs/.swiftlint.yml) — not overridable per-package. | `ubuntu-latest` |
+| `build-test.yml` | Builds and tests each matrix entry: `swift build && swift test` for `linux`/`macos`, `xcodebuild build test` against a simulator for `ios`/`watchos`/`tvos`/`visionos`. | `ubuntu-24.04` / `macos-latest` |
+| `lint.yml` | Runs SwiftLint via [`cirruslabs/swiftlint-action`](https://github.com/cirruslabs/swiftlint-action), which downloads a self-contained `swiftlint` binary directly (no Docker/Swift toolchain needed). Always enforces the [shared config](configs/.swiftlint.yml) — not overridable per-package. | `ubuntu-24.04` |
 | `swiftformat-apply.yml` | Runs [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) in apply mode against the [shared config](configs/.swiftformat) and opens a `bump:patch`-labeled pull request to `main` with the changes. Intended to be scheduled (e.g. weekly), not run on every PR. | `macos-latest` |
-| `audit.yml` | Resolves dependencies, prints the dependency graph, and runs GitHub's dependency review action on PRs. | `ubuntu-latest` |
+| `audit.yml` | Resolves dependencies, prints the dependency graph, and runs GitHub's dependency review action on PRs. | `ubuntu-24.04` |
 | `copyright-header-check.yml` | Fails unless every `*.swift` file carries the required Apache 2.0 copyright header (`Copyright <YEAR> adesso SE` + license notice) near the top of the file. A file may opt out by placing `// copyright-header:allow-exception` on its **first line** (e.g. vendored third-party code under a different license); exempted files are not failed but emit a warning for auditing. | `ubuntu-latest` |
 | `pr-label-check.yml` | Fails unless the pull request has **exactly one** of the labels `bump:major`, `bump:minor`, `bump:patch`. | `ubuntu-latest` |
 | `auto-tag.yml` | On merge of a labeled PR into `main`, computes and pushes the next semver tag based on the label. Tag only — no GitHub Release. | `ubuntu-latest` |
@@ -140,7 +140,7 @@ declared `platforms` array, which is the **single source of truth** for which jo
 - **Platforms declared** → exactly those platforms run. Apple platforms (`ios`, `watchos`, `tvos`,
   `visionos`) run on `macos-latest` via `xcodebuild` against a simulator destination; `macos` runs
   `swift build && swift test` on `macos-latest`; `linux` (see below) runs `swift build && swift test` on
-  `ubuntu-latest`.
+  `ubuntu-24.04`.
 - **No `platforms:` declared, or declared as an empty array (`platforms: []`)** → the matrix is empty and the
   detect job **fails loudly**. Every package must declare at least one platform.
 - **Caveat:** the `platforms:` array must be a static literal (e.g. `platforms: [.iOS(.v16), .macOS(.v13)]`),
@@ -160,7 +160,7 @@ platforms: [.macOS(.v13), .custom("linux", versionString: "1.0")]
 
 Semantics are a strict boolean:
 
-- **`.custom("linux", ...)` present** → a Linux job (`swift build && swift test` on `ubuntu-latest`) runs, in
+- **`.custom("linux", ...)` present** → a Linux job (`swift build && swift test` on `ubuntu-24.04`) runs, in
   addition to any declared Apple platforms.
 - **`.custom("linux", ...)` absent** → no Linux job runs.
 
@@ -194,7 +194,7 @@ not automatically track newer Swift releases — bump it explicitly here (or via
 
 ## Runners
 
-Workflows default to the lowest-cost GitHub-hosted runners where possible (`ubuntu-latest`), reserving
+Workflows default to the lowest-cost GitHub-hosted runners where possible (`ubuntu-latest` / `ubuntu-24.04`), reserving
 `macos-latest` only for jobs that require an Apple SDK/toolchain or a preinstalled macOS-only tool
 (Apple-platform builds, SwiftFormat).
 Runner selection is centralized in `detect-platforms.yml`'s matrix output and each workflow's `runs-on`, so
