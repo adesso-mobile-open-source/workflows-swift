@@ -37,7 +37,7 @@
 #   and lives in the repo-owned Package.swift rather than in a template-synced
 #   workflow input, so it never shows up as template drift. Semantics are a
 #   strict boolean:
-#     - `.custom("linux", ...)` present  -> a Linux job (ubuntu-latest, spm) runs.
+#     - `.custom("linux", ...)` present  -> a Linux job (ubuntu-24.04, spm) runs.
 #     - `.custom("linux", ...)` absent   -> no Linux job runs.
 #   There is no implicit Linux fallback: an existing package with no
 #   `platforms:` array (or an empty one) resolves to an empty matrix and fails
@@ -47,7 +47,7 @@
 #   detect-platforms.sh [package-path]
 #
 # Output (stdout): a single line of JSON, e.g.
-#   {"include":[{"platform":"linux","runner":"ubuntu-latest","kind":"spm"}]}
+#   {"include":[{"platform":"linux","runner":"ubuntu-24.04","kind":"spm"}]}
 #
 # This JSON is intended to be assigned directly to a GitHub Actions
 # `strategy.matrix` via `fromJSON(...)`.
@@ -62,7 +62,7 @@
 #     {"include":[
 #       {"platform":"macos","runner":"macos-latest","kind":"spm"},
 #       {"platform":"ios","runner":"macos-latest","kind":"xcodebuild","sdk":"iphonesimulator"},
-#       {"platform":"linux","runner":"ubuntu-latest","kind":"spm"}
+#       {"platform":"linux","runner":"ubuntu-24.04","kind":"spm"}
 #     ]}
 #
 #   Each object in "include" is consumed by build-test.yml as exactly one
@@ -183,7 +183,7 @@ platform_entry() {
   local name="$1"
   case "$name" in
     linux)
-      printf '{"platform":"linux","runner":"ubuntu-latest","kind":"spm"}'
+      printf '{"platform":"linux","runner":"ubuntu-24.04","kind":"spm"}'
       ;;
     macos)
       printf '{"platform":"macos","runner":"macos-latest","kind":"spm"}'

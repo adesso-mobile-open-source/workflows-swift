@@ -42,7 +42,7 @@ on:
 jobs:
   lint:
     name: SwiftLint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout package
         uses: actions/checkout@v7
